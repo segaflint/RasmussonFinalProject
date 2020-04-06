@@ -23,6 +23,7 @@ print					{return Write;}
 \=\=					{return EQ;}
 \=					{return '=';}
 \+					{return '+';}
+\-					{return '-';}
 \*					{return '*';}
 \;					{return ';';}
 \{					{return '{';}
@@ -40,9 +41,7 @@ print					{return Write;}
 
 %%
 
-	
+
 int yywrap () {
     return 1;
 }
-			
-	

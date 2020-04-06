@@ -1,0 +1,10 @@
+*.o
+*.out
+*.lst
+*.asm
+lex.yy.c
+y.tab.c
+y.tab.h
+compile
+*.txt
+*.ñ
