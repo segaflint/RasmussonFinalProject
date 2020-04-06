@@ -41,13 +41,13 @@ struct ExprRes *  doRval(char * name)  {
   return res;
 }
 
-struct ExprRes *  doAdd(struct ExprRes * Res1, struct ExprRes * Res2)  {
+struct ExprRes *  doArith(struct ExprRes * Res1, struct ExprRes * Res2, char * inst)  {
 
-   int reg;
+  int reg;
 
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
-  AppendSeq(Res1->Instrs,GenInstr(NULL,"add",
+  AppendSeq(Res1->Instrs,GenInstr(NULL, inst,
                                        TmpRegName(reg),
                                        TmpRegName(Res1->Reg),
                                        TmpRegName(Res2->Reg)));
@@ -58,38 +58,58 @@ struct ExprRes *  doAdd(struct ExprRes * Res1, struct ExprRes * Res2)  {
   return Res1;
 }
 
-struct ExprRes * doSub(struct ExprRes * Res1, struct ExprRes * Res2) {
-    int reg;
+struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2) {
+    //Res1->Reg holds the quotent, and Res2->Reg holds the divisor
 
+    //x % y = x - (Floor(x / y) * y) so do:
+    //1. z = x / y
+    //2. a = z * y // after, free y and free z
+    //3. result = x - a  //after, free x and a
+
+    int reg;
+    int reg1;
+
+    //z = x / y
+    //z => reg
+    //x => Res1->reg
+    //y => Res2->Reg
     reg = AvailTmpReg();
-    AppendSeq(Res1->Instrs,Res2->Instrs);
-    AppendSeq(Res1->Instrs,GenInstr(NULL,"sub",
-                                        TmpRegName(reg),
-                                        TmpRegName(Res1->Reg),
-                                        TmpRegName(Res2->Reg)));
-    ReleaseTmpReg(Res1->Reg);
+    AppendSeq(Res1->Instrs,Res2->Instrs); // add instructions for Expressions together
+    AppendSeq(Res1->Instrs,GenInstr(NULL, "div", TmpRegName(reg),
+        TmpRegName(Res1->Reg), TmpRegName(Res2->Reg)));
+
+    //a = z * y
+    //a => reg1
+    //z => reg
+    //y => Res2->Reg
+    reg1 = AvailTmpReg();
+    AppendSeq(Res1->Instrs,GenInstr(NULL, "mul", TmpRegName(reg1),
+        TmpRegName(reg), TmpRegName(Res2->Reg)));
+
+    //result = x - a
+    //result => Res1->Reg
+    // x => Res1->Reg
+    // a => reg1
+    AppendSeq(Res1->Instrs,GenInstr(NULL, "sub", TmpRegName(Res1->Reg),
+        TmpRegName(Res1->Reg), TmpRegName(reg1)));
+
+    ReleaseTmpReg(reg);
+    ReleaseTmpReg(reg1);
     ReleaseTmpReg(Res2->Reg);
-    Res1->Reg = reg;
     free(Res2);
     return Res1;
 }
 
+struct ExprRes * doUnary(struct ExprRes * Res) {
+    int reg;
 
-struct ExprRes *  doMult(struct ExprRes * Res1, struct ExprRes * Res2)  {
+    reg = AvailTmpReg();
+    AppendSeq(Res->Instrs, GenInstr(NULL, "sub", TmpRegName(reg),
+        "$zero", TmpRegName(Res->Reg)));
 
-   int reg;
-
-  reg = AvailTmpReg();
-  AppendSeq(Res1->Instrs,Res2->Instrs);
-  AppendSeq(Res1->Instrs,GenInstr(NULL,"mul",
-                                       TmpRegName(reg),
-                                       TmpRegName(Res1->Reg),
-                                       TmpRegName(Res2->Reg)));
-  ReleaseTmpReg(Res1->Reg);
-  ReleaseTmpReg(Res2->Reg);
-  Res1->Reg = reg;
-  free(Res2);
-  return Res1;
+    ReleaseTmpReg(Res->Reg);
+    Res->Reg = reg;
+    return Res;
 }
 
 struct InstrSeq * doPrint(struct ExprRes * Expr) {

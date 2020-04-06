@@ -30,9 +30,9 @@ struct BExprRes {
 extern struct ExprRes *  doIntLit(char * digits);
 extern struct ExprRes *  doRval(char * name);
 extern struct InstrSeq *  doAssign(char * name,  struct ExprRes * Res1);
-extern struct ExprRes *  doAdd(struct ExprRes * Res1,  struct ExprRes * Res2); //addition of expressions
-extern struct ExprRes * doSub(struct ExprRes * Res1, struct ExprRes * Res2);
-extern struct ExprRes *  doMult(struct ExprRes * Res1,  struct ExprRes * Res2);
+extern struct ExprRes *  doArith(struct ExprRes * Res1,  struct ExprRes * Res2, char * inst); // Arithmetic instructions
+extern struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2); // Modulus operation
+extern struct ExprRes * doUnary(struct ExprRes * Res);
 extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
 extern struct BExprRes * doBExpr (struct ExprRes * Res1,  struct ExprRes * Res2);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
