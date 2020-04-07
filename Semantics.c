@@ -112,6 +112,53 @@ struct ExprRes * doUnary(struct ExprRes * Res) {
     return Res;
 }
 
+struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2) {
+    int counterReg; // "$t0" in the below example
+    int sltResReg; // "$t3" in the below example
+    int resultReg; // "$t4" in the below example
+    char * loopLabel; //L1
+    char * endLabel; //L2
+
+    counterReg = AvailTmpReg();
+    sltResReg = AvailTmpReg();
+    resultReg = AvailTmpReg();
+    loopLabel = GenLabel();
+    endLabel = GenLabel();
+    AppendSeq(Res1->Instrs, Res2->Instrs);
+    // "$t0" is counterReg
+    // "$t1" is the Res2->Reg (exponent)
+    // "$t2" is the Res1->Reg (original base number of the expression)
+    // addi $t0, $zero, 0  # i = 0 // needs to be 1 because the first instance has the initial two multiplied
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "addi", TmpRegName(counterReg), "$zero", "0"));
+    // addi $t4, $zero, 1 # t4 = 1
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "addi", TmpRegName(resultReg), "$zero", "1"));
+
+    // L1 slt  $t3, $t0, $t1  # i < t1 //   slt $d, $s, $t  If $s is less than $t, $d is set to one. It gets zero otherwise.
+    AppendSeq(Res1->Instrs, GenInstr(loopLabel, "slt", TmpRegName(sltResReg),
+        TmpRegName(counterReg), TmpRegName(Res2->Reg)));
+    //    beq $t3,$zero, L2 # exit loop
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(sltResReg), "$zero", endLabel ));
+    //    mul  $t4 $t4 $t2    # work, multiply
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "mul", TmpRegName(resultReg),
+        TmpRegName(resultReg), TmpRegName(Res1->Reg)));
+    //    addi $t0, $t0, 1    # i++
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "addi", TmpRegName(counterReg), TmpRegName(counterReg), "1"));
+    //    j L1 # loop
+    AppendSeq(Res1->Instrs, GenInstr(NULL, "j", loopLabel, NULL, NULL));
+    // L2:
+    AppendSeq(Res1->Instrs, GenInstr(endLabel, NULL, NULL, NULL, NULL));
+
+    //Free all Registers and results that are no longer used
+    ReleaseTmpReg(Res1->Reg);
+    ReleaseTmpReg(Res2->Reg);
+    ReleaseTmpReg(counterReg);
+    ReleaseTmpReg(sltResReg);
+    free(Res2);
+    Res1->Reg = resultReg;
+
+    return Res1;
+}
+
 struct InstrSeq * doPrint(struct ExprRes * Expr) {
 
   struct InstrSeq *code;

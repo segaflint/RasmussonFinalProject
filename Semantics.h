@@ -33,8 +33,10 @@ extern struct InstrSeq *  doAssign(char * name,  struct ExprRes * Res1);
 extern struct ExprRes *  doArith(struct ExprRes * Res1,  struct ExprRes * Res2, char * inst); // Arithmetic instructions
 extern struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2); // Modulus operation
 extern struct ExprRes * doUnary(struct ExprRes * Res);
+extern struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
 extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
 extern struct BExprRes * doBExpr (struct ExprRes * Res1,  struct ExprRes * Res2);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
+
 
 extern void	Finish(struct InstrSeq *Code);
