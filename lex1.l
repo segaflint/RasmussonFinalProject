@@ -17,6 +17,8 @@ digit [0-9]
 %%
 if					{return IF;}
 int					{return Int;}
+for					{return FOR;}
+while				{return WHILE;}
 print					{return Write;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}

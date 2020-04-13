@@ -40,6 +40,8 @@ extern SymTab *table;
 %token Int
 %token Write
 %token IF
+%token FOR
+%token WHILE
 %token EQ
 
 %%
