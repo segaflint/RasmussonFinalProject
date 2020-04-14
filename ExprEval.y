@@ -28,6 +28,7 @@ extern SymTab *table;
 }
 
 %type <string> Id
+%type <ExprRes> Expo
 %type <ExprRes> Factor
 %type <ExprRes> Term
 %type <ExprRes> Expr
@@ -48,26 +49,28 @@ extern SymTab *table;
 
 Prog			:	Declarations StmtSeq				{Finish($2); } ;
 Declarations	:	Dec Declarations					{ };
-Declarations	:										{ };
+Declarations	:						  		{ };
 Dec			:	Int Ident {enterName(table, yytext); }';'	{};
-StmtSeq 		:	Stmt StmtSeq						{$$ = AppendSeq($1, $2); } ;
+StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
-Stmt			:	Write Expr ';'						{$$ = doPrint($2); };
-Stmt			:	Id '=' Expr ';'						{$$ = doAssign($1, $3);} ;
+Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
+Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
-BExpr		:	Expr EQ Expr							{$$ = doBExpr($1, $3);};
-Expr			:	Expr '+' Term						{$$ = doArith($1, $3, "add");};
-Expr            :   Expr '-' Term                       {$$ = doArith($1, $3, "sub");};
-Expr			:	Term								{$$ = $1;};
-Term        :   Term '/' Factor                         { $$ = doArith($1, $3, "div"); };
-Term        :   Term '%' Factor                         { $$ = doMod($1, $3);};
-Term		:	Term '*' Factor							{ $$ = doArith($1, $3, "mul"); };
-Term		:	Factor									{ $$ = $1; } ;
-Factor      :   '-' Factor                              { $$ = doUnary($2);};
-Factor      :   '(' Expr ')'                            { $$ = $2;};
-Factor		:	IntLit									{ $$ = doIntLit(yytext); };
-Factor		:	Ident									{ $$ = doRval(yytext); };
-Id			: 	Ident									{ $$ = strdup(yytext);}
+BExpr		  :	Expr EQ Expr				{$$ = doBExpr($1, $3);};
+Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
+Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
+Expr			:	Term						    {$$ = $1;};
+Term      : Term '/' Factor     { $$ = doArith($1, $3, "div"); };
+Term      : Term '%' Factor     { $$ = doMod($1, $3);};
+Term		  :	Term '*' Factor			{ $$ = doArith($1, $3, "mul"); };
+Term		  :	Factor						  { $$ = $1;};
+Factor    : Expo '^' Factor     { $$ = doExponent($1, $3);};
+Factor    : Expo                { $$ = $1;};
+Expo      : '-' Expo            { $$ = doUnary($2);};
+Expo      : '(' Expr ')'        { $$ = $2;};
+Expo   		:	IntLit							{ $$ = doIntLit(yytext); };
+Expo  		:	Ident								{ $$ = doRval(yytext); };
+Id			  : Ident								{ $$ = strdup(yytext);}
 
 %%
 
