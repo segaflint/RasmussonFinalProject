@@ -199,15 +199,48 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
   return code;
 }
 
-extern struct BExprRes * doBExpr(struct ExprRes * Res1,  struct ExprRes * Res2) {
+extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator) {
 	struct BExprRes * bRes;
+  int reg;
 	AppendSeq(Res1->Instrs, Res2->Instrs);
  	bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
 	bRes->Label = GenLabel();
-	AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
+
+  switch (relationalOperator) {
+    case 1: //EQ
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
+      break;
+    case 4: //GEQ
+      reg = AvailTmpReg();
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "slt", TmpRegName(reg), TmpRegName(Res1->Reg), TmpRegName(Res2->Reg))); //Check Res1 < Res2
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(reg), "1", bRes->Label));
+      ReleaseTmpReg(reg);
+      break;
+    case 2: //LEQ
+      reg = AvailTmpReg();
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "slt", TmpRegName(reg), TmpRegName(Res2->Reg), TmpRegName(Res1->Reg))); //Check Res2 < Res1
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(reg), "1", bRes->Label));
+      ReleaseTmpReg(reg);
+      break;
+    case 5: //GT
+      reg = AvailTmpReg();
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "slt", TmpRegName(reg), TmpRegName(Res2->Reg), TmpRegName(Res1->Reg))); //Check Res2 < Res1
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(reg), "0", bRes->Label));
+      ReleaseTmpReg(reg);
+      break;
+    case 3: //LT
+      reg = AvailTmpReg();
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "slt", TmpRegName(reg), TmpRegName(Res1->Reg), TmpRegName(Res2->Reg))); //Check Res1 < Res2
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(reg), "0", bRes->Label));
+      ReleaseTmpReg(reg);
+      break;
+    case 6: //NEQ
+      AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
+      break;
+  }
 	bRes->Instrs = Res1->Instrs;
 	ReleaseTmpReg(Res1->Reg);
-  	ReleaseTmpReg(Res2->Reg);
+  ReleaseTmpReg(Res2->Reg);
 	free(Res1);
 	free(Res2);
 	return bRes;

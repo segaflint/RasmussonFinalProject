@@ -44,6 +44,13 @@ extern SymTab *table;
 %token FOR
 %token WHILE
 %token EQ
+%token LEQ
+%token GEQ
+%token LT
+%token GT
+%token NEQ
+%token ANDOP
+%token OROP
 
 %%
 
@@ -56,7 +63,12 @@ StmtSeq		:											{$$ = NULL;} ;
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
-BExpr		  :	Expr EQ Expr				{$$ = doBExpr($1, $3);};
+BExpr		  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
+BExpr     : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
+BExpr     : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
+BExpr     : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
+BExpr     : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
+BExpr     : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};

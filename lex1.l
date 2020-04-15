@@ -22,19 +22,28 @@ while				{return WHILE;}
 print					{return Write;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}
-\=\=					{return EQ;}
+\=\=				{return EQ;}
+\>\=				{return GEQ;}
+\>					{return GT;}
+\<\=				{return LEQ;}
+\<					{return LT;}
+\!\=				{return NEQ;}
 \=					{return '=';}
 \+					{return '+';}
 \-					{return '-';}
 \*					{return '*';}
 \%					{return '%';}
 \/					{return '/';}
+\!					{return '!';}
+\&\&				{return ANDOP;}
+\|\|				{return OROP;}
 \^					{return '^';}
 \;					{return ';';}
 \{					{return '{';}
 \}					{return '}';}
 \(					{return '(';}
 \)					{return ')';}
+
 
 [ ]				{}
 \t				{}

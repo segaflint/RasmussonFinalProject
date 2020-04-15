@@ -35,7 +35,7 @@ extern struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2); // 
 extern struct ExprRes * doUnary(struct ExprRes * Res);
 extern struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
 extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
-extern struct BExprRes * doBExpr (struct ExprRes * Res1,  struct ExprRes * Res2);
+extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 
 
