@@ -35,6 +35,7 @@ extern SymTab *table;
 %type <InstrSeq> StmtSeq
 %type <InstrSeq> Stmt
 %type <BExprRes> BExpr
+%type <BExprRes> BTerm
 
 %token Ident
 %token IntLit
@@ -63,12 +64,15 @@ StmtSeq		:											{$$ = NULL;} ;
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
-BExpr		  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
-BExpr     : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
-BExpr     : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
-BExpr     : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
-BExpr     : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
-BExpr     : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
+BExpr     : '!' BExpr           {$$ = doNot($2);};
+BExpr     : BTerm               {$$ = $1;};
+BTerm		  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
+BTerm     : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
+BTerm     : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
+BTerm     : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
+BTerm     : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
+BTerm     : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
+BTerm     : '(' BExpr ')'       {$$ = $2;};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};

@@ -37,6 +37,7 @@ extern struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2)
 extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
+extern struct BExprRes * doNot(struct BExprRes * Res);
 
 
 extern void	Finish(struct InstrSeq *Code);

@@ -199,7 +199,7 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
   return code;
 }
 
-extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator) {
+struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator) {
 	struct BExprRes * bRes;
   int reg;
 	AppendSeq(Res1->Instrs, Res2->Instrs);
@@ -246,12 +246,20 @@ extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res
 	return bRes;
 }
 
-extern struct InstrSeq * doIf(struct BExprRes * bRes, struct InstrSeq * seq) {
+struct InstrSeq * doIf(struct BExprRes * bRes, struct InstrSeq * seq) {
 	struct InstrSeq * seq2;
 	seq2 = AppendSeq(bRes->Instrs, seq);
 	AppendSeq(seq2, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
 	free(bRes);
 	return seq2;
+}
+
+struct BExprRes * doNot(struct BExprRes * bRes) {
+  char * label = GenLabel();
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "j", label, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+  bRes->Label = label;
+  return bRes;
 }
 
 /*
