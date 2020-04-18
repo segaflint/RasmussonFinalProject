@@ -15,6 +15,8 @@ extern SymTab *table;
 
 /* Semantics support routines */
 
+/* BEGIN INTEGER EXPRESSIONS */
+
 struct ExprRes *  doIntLit(char * digits)  {
 
    struct ExprRes *res;
@@ -39,6 +41,26 @@ struct ExprRes *  doRval(char * name)  {
   res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
 
   return res;
+}
+
+struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
+
+  struct InstrSeq *code;
+
+
+   if (!findName(table, name)) {
+		writeIndicator(getCurrentColumnNum());
+		writeMessage("Undeclared variable");
+   }
+
+  code = Expr->Instrs;
+
+  AppendSeq(code,GenInstr(NULL,"sw",TmpRegName(Expr->Reg), name,NULL));
+
+  ReleaseTmpReg(Expr->Reg);
+  free(Expr);
+
+  return code;
 }
 
 struct ExprRes *  doArith(struct ExprRes * Res1, struct ExprRes * Res2, char * inst)  {
@@ -159,46 +181,6 @@ struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2) {
     return Res1;
 }
 
-struct InstrSeq * doPrint(struct ExprRes * Expr) {
-
-  struct InstrSeq *code;
-
-  code = Expr->Instrs;
-
-    AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
-    AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
-    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
-
-    AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
-    AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
-   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
-
-    ReleaseTmpReg(Expr->Reg);
-    free(Expr);
-
-  return code;
-}
-
-struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
-
-  struct InstrSeq *code;
-
-
-   if (!findName(table, name)) {
-		writeIndicator(getCurrentColumnNum());
-		writeMessage("Undeclared variable");
-   }
-
-  code = Expr->Instrs;
-
-  AppendSeq(code,GenInstr(NULL,"sw",TmpRegName(Expr->Reg), name,NULL));
-
-  ReleaseTmpReg(Expr->Reg);
-  free(Expr);
-
-  return code;
-}
-
 struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator) {
 	struct BExprRes * bRes;
   int reg;
@@ -262,7 +244,6 @@ struct BExprRes * doNot(struct BExprRes * bRes) {
   return bRes;
 }
 
-
 struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2) {
   char * checkbRes2Label = GenLabel();
 
@@ -290,6 +271,18 @@ struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2) {
   return bRes1;
 }
 
+/* END INTEGER EXPRESSIONS */
+
+/* BEGIN INTEGER I/O */
+struct InstrSeq * doReadIO(struct IdentList * IdList){
+
+}
+
+struct InstrSeq * doPrintExprList(struct ExprList * exprList){
+
+}
+
+
 struct InstrSeq * doPrintline(){
   struct InstrSeq * code;
   code = GenInstr(NULL,"li","$v0","4",NULL);
@@ -298,6 +291,32 @@ struct InstrSeq * doPrintline(){
 
   return code;
 }
+
+struct InstrSeq * printSpaces(struct ExprRes * res){
+
+}
+
+struct InstrSeq * doPrint(struct ExprRes * Expr) {
+
+  struct InstrSeq *code;
+
+  code = Expr->Instrs;
+
+    AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
+    AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
+    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+    AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
+    AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+    ReleaseTmpReg(Expr->Reg);
+    free(Expr);
+
+  return code;
+}
+
+/* END INTEGER I/O */
 
 /*
 

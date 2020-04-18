@@ -36,6 +36,7 @@ extern SymTab *table;
 %type <InstrSeq> Stmt
 %type <BExprRes> BExpr
 %type <BExprRes> BTerm
+%type <BExprRes> BFactor
 
 %token Ident
 %token IntLit
@@ -51,7 +52,7 @@ extern SymTab *table;
 %token GT
 %token NEQ
 %token BAND
-%token BOP
+%token BOR
 %token PrintLine
 
 %%
@@ -66,16 +67,18 @@ Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt      : PrintLine ';'       {$$ = doPrintline();};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
+BExpr     : BExpr BOR BTerm     {$$ = doBOR($1, $3);};
 BExpr     : BTerm               {$$ = $1;};
-BExpr     : BExpr BAND BTerm    {$$ = doBAND($1, $3);};
-BTerm     : '!' BTerm           {$$ = doNot($2);};
-BTerm		  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
-BTerm     : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
-BTerm     : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
-BTerm     : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
-BTerm     : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
-BTerm     : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
-BTerm     : '(' BExpr ')'       {$$ = $2;};
+BTerm     : BTerm BAND BFactor  {$$ = doBAND($1, $3);};
+BTerm     : BFactor             {$$ = $1;};
+BFactor   : '!' BFactor         {$$ = doNot($2);};
+BFactor	  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
+BFactor   : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
+BFactor   : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
+BFactor   : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
+BFactor   : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
+BFactor   : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
+BFactor   : '(' BExpr ')'       {$$ = $2;};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};

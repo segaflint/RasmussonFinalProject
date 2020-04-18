@@ -37,7 +37,7 @@ print					{return Write;}
 \/					{return '/';}
 \!					{return '!';}
 \&\&				{return BAND;}
-\|\|				{return BOP;}
+\|\|				{return BOR;}
 \^					{return '^';}
 \;					{return ';';}
 \{					{return '{';}

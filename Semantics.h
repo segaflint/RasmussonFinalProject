@@ -34,13 +34,18 @@ extern struct ExprRes *  doArith(struct ExprRes * Res1,  struct ExprRes * Res2, 
 extern struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2); // Modulus operation
 extern struct ExprRes * doUnary(struct ExprRes * Res);
 extern struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
-extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct BExprRes * doNot(struct BExprRes * Res);
 extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2);
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
+
+/* Integer I/O*/
+extern struct InstrSeq * doReadIO(struct IdentList * IdList);
+extern struct InstrSeq * doPrintExprList(struct ExprList * exprList);
 extern struct InstrSeq * doPrintline();
+extern struct InstrSeq * printSpaces(struct ExprRes * res);
+extern struct InstrSeq * doPrint(struct ExprRes * Expr);
 
 
 
