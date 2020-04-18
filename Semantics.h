@@ -38,6 +38,10 @@ extern struct InstrSeq *  doPrint(struct ExprRes * Expr);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct BExprRes * doNot(struct BExprRes * Res);
+extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2);
+extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
+extern struct InstrSeq * doPrintline();
+
 
 
 extern void	Finish(struct InstrSeq *Code);

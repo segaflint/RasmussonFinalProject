@@ -19,6 +19,7 @@ if					{return IF;}
 int					{return Int;}
 for					{return FOR;}
 while				{return WHILE;}
+printline   {return PrintLine;}
 print					{return Write;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}
@@ -35,8 +36,8 @@ print					{return Write;}
 \%					{return '%';}
 \/					{return '/';}
 \!					{return '!';}
-\&\&				{return ANDOP;}
-\|\|				{return OROP;}
+\&\&				{return BAND;}
+\|\|				{return BOP;}
 \^					{return '^';}
 \;					{return ';';}
 \{					{return '{';}

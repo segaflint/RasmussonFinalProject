@@ -50,8 +50,9 @@ extern SymTab *table;
 %token LT
 %token GT
 %token NEQ
-%token ANDOP
-%token OROP
+%token BAND
+%token BOP
+%token PrintLine
 
 %%
 
@@ -62,10 +63,12 @@ Dec			:	Int Ident {enterName(table, yytext); }';'	{};
 StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
+Stmt      : PrintLine ';'       {$$ = doPrintline();};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
-BExpr     : '!' BExpr           {$$ = doNot($2);};
 BExpr     : BTerm               {$$ = $1;};
+BExpr     : BExpr BAND BTerm    {$$ = doBAND($1, $3);};
+BTerm     : '!' BTerm           {$$ = doNot($2);};
 BTerm		  :	Expr EQ Expr				{$$ = doBExprRel($1, $3, 1);};
 BTerm     : Expr LEQ Expr       {$$ = doBExprRel($1, $3, 2);};
 BTerm     : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};

@@ -262,6 +262,43 @@ struct BExprRes * doNot(struct BExprRes * bRes) {
   return bRes;
 }
 
+
+struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2) {
+  char * checkbRes2Label = GenLabel();
+
+  AppendSeq(bRes1->Instrs, GenInstr(NULL, "j", checkbRes2Label, NULL, NULL)); // jump to second check
+  AppendSeq(bRes1->Instrs, GenInstr(bRes1->Label, "j", bRes2->Label, NULL, NULL)); // jump out of code, 1st condition failed so we will go to end.
+  AppendSeq(bRes1->Instrs, GenInstr(checkbRes2Label, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes1->Instrs, bRes2->Instrs); // second check
+
+  bRes1->Label = bRes2->Label;
+  free(bRes2);
+  return bRes1;
+
+}
+
+struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2) {
+  char * bodyLabel = GenLabel();
+
+  AppendSeq(bRes1->Instrs, GenInstr(NULL, "j", bodyLabel, NULL, NULL)); // first condition passed; move to code body
+  AppendSeq(bRes1->Instrs, GenInstr(bRes1->Label, NULL, NULL, NULL, NULL)); // first condition failed; check second
+  AppendSeq(bRes1->Instrs, bRes2->Instrs); // second conditional
+  AppendSeq(bRes1->Instrs, GenInstr(bodyLabel, NULL, NULL, NULL, NULL)); // reached the body; either first was true and jumped here,
+  // or first was false, second was true and fell through
+  bRes1->Label = bRes2->Label;
+  free(bRes2);
+  return bRes1;
+}
+
+struct InstrSeq * doPrintline(){
+  struct InstrSeq * code;
+  code = GenInstr(NULL,"li","$v0","4",NULL);
+  AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+  return code;
+}
+
 /*
 
 extern struct InstrSeq * doIf(struct ExprRes *res1, struct ExprRes *res2, struct InstrSeq * seq) {
