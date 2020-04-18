@@ -41,10 +41,10 @@ extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
 
 /* Integer I/O*/
-extern struct InstrSeq * doReadIO(struct IdentList * IdList);
-extern struct InstrSeq * doPrintExprList(struct ExprList * exprList);
+// extern struct InstrSeq * doReadIO(struct IdentList * IdList);
+// extern struct InstrSeq * doPrintExprList(struct ExprList * exprList);
 extern struct InstrSeq * doPrintline();
-extern struct InstrSeq * printSpaces(struct ExprRes * res);
+extern struct InstrSeq * doPrintSpaces(struct ExprRes * res);
 extern struct InstrSeq * doPrint(struct ExprRes * Expr);
 
 

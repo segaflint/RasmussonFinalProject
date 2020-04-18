@@ -19,7 +19,8 @@ if					{return IF;}
 int					{return Int;}
 for					{return FOR;}
 while				{return WHILE;}
-printline   {return PrintLine;}
+printLine   {return PrintLine;}
+printSpaces {return PrintSpaces;}
 print					{return Write;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}

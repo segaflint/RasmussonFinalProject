@@ -53,6 +53,7 @@ extern SymTab *table;
 %token NEQ
 %token BAND
 %token BOR
+%token PrintSpaces
 %token PrintLine
 
 %%
@@ -64,6 +65,7 @@ Dec			:	Int Ident {enterName(table, yytext); }';'	{};
 StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
+Stmt      : PrintSpaces '(' Expr ')' ';'  {$$ = doPrintSpaces($3);};
 Stmt      : PrintLine ';'       {$$ = doPrintline();};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};

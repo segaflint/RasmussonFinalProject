@@ -274,13 +274,13 @@ struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2) {
 /* END INTEGER EXPRESSIONS */
 
 /* BEGIN INTEGER I/O */
-struct InstrSeq * doReadIO(struct IdentList * IdList){
+// struct InstrSeq * doReadIO(struct IdentList * IdList){
+//
+// }
 
-}
-
-struct InstrSeq * doPrintExprList(struct ExprList * exprList){
-
-}
+// struct InstrSeq * doPrintExprList(struct ExprList * exprList){
+//
+// }
 
 
 struct InstrSeq * doPrintline(){
@@ -292,7 +292,37 @@ struct InstrSeq * doPrintline(){
   return code;
 }
 
-struct InstrSeq * printSpaces(struct ExprRes * res){
+struct InstrSeq * doPrintSpaces(struct ExprRes * res){
+  //res->Reg holds the number of spaces to print
+
+  struct InstrSeq * code;
+  char * loopLabel;
+  char * finishedLabel;
+  int iteratorReg;
+  int tempReg;
+
+  code = res->Instrs;
+  loopLabel = GenLabel();
+  finishedLabel = GenLabel();
+  iteratorReg = AvailTmpReg();
+  tempReg = AvailTmpReg();
+
+  AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
+  AppendSeq(code,GenInstr(NULL,"la","$a0","_space",NULL)); //set up space to be printed
+  AppendSeq(code,GenInstr(NULL,"li",TmpRegName(iteratorReg), "0", NULL)); // i = 0
+
+  AppendSeq(code, GenInstr(loopLabel, "slt", TmpRegName(tempReg), TmpRegName(iteratorReg), TmpRegName(res->Reg) ));
+  AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(tempReg), "1", finishedLabel));
+  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));//print space
+  AppendSeq(code, GenInstr(NULL, "addi", TmpRegName(iteratorReg), TmpRegName(iteratorReg), "1")); //i++
+  AppendSeq(code, GenInstr(NULL, "j", loopLabel, NULL, NULL)); // jump to loop beginning
+  AppendSeq(code, GenInstr(finishedLabel, NULL, NULL, NULL, NULL)); //out of loop
+
+  ReleaseTmpReg(iteratorReg);
+  ReleaseTmpReg(tempReg);
+  free(res);
+
+  return code;
 
 }
 
@@ -302,16 +332,16 @@ struct InstrSeq * doPrint(struct ExprRes * Expr) {
 
   code = Expr->Instrs;
 
-    AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
-    AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
-    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
+  AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
+  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
 
-    AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
-    AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
-   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
+  AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
 
-    ReleaseTmpReg(Expr->Reg);
-    free(Expr);
+  ReleaseTmpReg(Expr->Reg);
+  free(Expr);
 
   return code;
 }
@@ -353,6 +383,7 @@ Finish(struct InstrSeq *Code)
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
   AppendSeq(code,GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code,GenInstr(NULL,".align","4",NULL,NULL));
+  AppendSeq(code, GenInstr("_space", ".asciiz","\" \"", NULL, NULL));
   AppendSeq(code,GenInstr("_nl",".asciiz","\"\\n\"",NULL,NULL));
 
  hasMore = startIterator(table);
