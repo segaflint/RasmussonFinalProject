@@ -45,6 +45,7 @@ print					{return Write;}
 \}					{return '}';}
 \(					{return '(';}
 \)					{return ')';}
+\,					{return ',';}
 
 
 [ ]				{}

@@ -29,11 +29,11 @@ struct BExprRes {
 // Integer Expressions
 extern struct ExprRes *  doIntLit(char * digits);
 extern struct ExprRes *  doRval(char * name);
-extern struct InstrSeq *  doAssign(char * name,  struct ExprRes * Res1);
+extern struct InstrSeq * doAssign(char * name,  struct ExprRes * Res1);
 extern struct ExprRes *  doArith(struct ExprRes * Res1,  struct ExprRes * Res2, char * inst); // Arithmetic instructions
-extern struct ExprRes * doMod(struct ExprRes * Res1, struct ExprRes * Res2); // Modulus operation
-extern struct ExprRes * doUnary(struct ExprRes * Res);
-extern struct ExprRes * doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
+extern struct ExprRes *  doMod(struct ExprRes * Res1, struct ExprRes * Res2); // Modulus operation
+extern struct ExprRes *  doUnary(struct ExprRes * Res);
+extern struct ExprRes *  doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct BExprRes * doNot(struct BExprRes * Res);
@@ -41,8 +41,11 @@ extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
 
 /* Integer I/O*/
-// extern struct InstrSeq * doReadIO(struct IdentList * IdList);
-// extern struct InstrSeq * doPrintExprList(struct ExprList * exprList);
+// extern struct InstrSeq * doReadIO(struct IdList * list);
+extern struct InstrSeq * doPrintExprList(struct ExprResList * exprList);
+extern struct ExprResList * doAppendExprList(struct ExprResList * resList, struct ExprRes * res);
+extern struct ExprResList * doExprToExprList(struct ExprRes * res1, struct ExprRes * res2);
+
 extern struct InstrSeq * doPrintline();
 extern struct InstrSeq * doPrintSpaces(struct ExprRes * res);
 extern struct InstrSeq * doPrint(struct ExprRes * Expr);

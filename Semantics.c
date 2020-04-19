@@ -278,9 +278,65 @@ struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2) {
 //
 // }
 
-// struct InstrSeq * doPrintExprList(struct ExprList * exprList){
-//
-// }
+struct InstrSeq * doPrintExprList(struct ExprResList * exprList){
+  struct InstrSeq * code;
+  struct ExprResList * currentList;
+  struct ExprResList * oldList;
+
+  currentList = exprList;
+  code = GenInstr(NULL, NULL, NULL, NULL, NULL);
+  while(currentList != NULL) {
+
+    AppendSeq(code, currentList->Expr->Instrs);
+    AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
+    AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(currentList->Expr->Reg), NULL));
+    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+    AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
+    AppendSeq(code,GenInstr(NULL,"la","$a0","_space",NULL));
+    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+    oldList = currentList;
+    currentList = currentList->Next;
+
+    ReleaseTmpReg(oldList->Expr->Reg);
+    free(oldList->Expr);
+    free(oldList);
+  }
+
+  AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+  return code;
+}
+
+struct ExprResList * doAppendExprList(struct ExprResList * resList, struct ExprRes * res){
+  struct ExprResList * newResList;
+  struct ExprResList * currentList;
+  newResList = (struct ExprResList * ) malloc(sizeof(struct ExprResList));
+
+  newResList->Expr = res;
+  newResList->Next = NULL;
+  currentList = resList;
+  while(currentList->Next) currentList = currentList->Next;
+  currentList->Next = newResList;
+
+  return resList;
+}
+
+struct ExprResList * doExprToExprList(struct ExprRes * res1, struct ExprRes * res2){
+  struct ExprResList * resList1;
+  struct ExprResList * resList2;
+
+  resList1 = (struct ExprResList * ) malloc(sizeof(struct ExprResList));
+  resList2 = (struct ExprResList * ) malloc(sizeof(struct ExprResList));
+  resList1->Expr = res1;
+  resList1->Next = resList2;
+  resList2->Expr = res2;
+  resList2->Next = NULL;
+
+  return resList1;
+}
 
 
 struct InstrSeq * doPrintline(){

@@ -25,6 +25,8 @@ extern SymTab *table;
   struct ExprRes * ExprRes;
   struct InstrSeq * InstrSeq;
   struct BExprRes * BExprRes;
+  struct ExprResList * ExprResList;
+  struct IdList * IdList;
 }
 
 %type <string> Id
@@ -37,6 +39,7 @@ extern SymTab *table;
 %type <BExprRes> BExpr
 %type <BExprRes> BTerm
 %type <BExprRes> BFactor
+%type <ExprResList> ExprList
 
 %token Ident
 %token IntLit
@@ -65,6 +68,7 @@ Dec			:	Int Ident {enterName(table, yytext); }';'	{};
 StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
+Stmt      : Write '(' ExprList ')' ';' {$$ = doPrintExprList($3);};
 Stmt      : PrintSpaces '(' Expr ')' ';'  {$$ = doPrintSpaces($3);};
 Stmt      : PrintLine ';'       {$$ = doPrintline();};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
@@ -81,6 +85,8 @@ BFactor   : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
 BFactor   : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
 BFactor   : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
 BFactor   : '(' BExpr ')'       {$$ = $2;};
+ExprList  : ExprList ',' Expr   {$$ = doAppendExprList($1, $3);};
+ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};              
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};
