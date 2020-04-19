@@ -41,7 +41,6 @@ extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
 
 /* Integer I/O*/
-// extern struct InstrSeq * doReadIO(struct IdList * list);
 extern struct InstrSeq * doPrintExprList(struct ExprResList * exprList);
 extern struct ExprResList * doAppendExprList(struct ExprResList * resList, struct ExprRes * res);
 extern struct ExprResList * doExprToExprList(struct ExprRes * res1, struct ExprRes * res2);
@@ -49,6 +48,13 @@ extern struct ExprResList * doExprToExprList(struct ExprRes * res1, struct ExprR
 extern struct InstrSeq * doPrintline();
 extern struct InstrSeq * doPrintSpaces(struct ExprRes * res);
 extern struct InstrSeq * doPrint(struct ExprRes * Expr);
+
+extern struct InstrSeq * doInputOnId(char * name);
+extern struct InstrSeq * doInputOnList(struct IdList * list );
+extern struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName);
+extern struct IdList * doIdToIdList(char * Id1, char * Id2);
+
+
 
 
 

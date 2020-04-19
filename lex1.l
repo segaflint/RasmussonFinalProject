@@ -22,6 +22,7 @@ while				{return WHILE;}
 printLine   {return PrintLine;}
 printSpaces {return PrintSpaces;}
 print					{return Write;}
+read 				{return READ;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}
 \=\=				{return EQ;}

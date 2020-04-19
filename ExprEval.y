@@ -40,6 +40,7 @@ extern SymTab *table;
 %type <BExprRes> BTerm
 %type <BExprRes> BFactor
 %type <ExprResList> ExprList
+%type <IdList> IdentList
 
 %token Ident
 %token IntLit
@@ -58,6 +59,7 @@ extern SymTab *table;
 %token BOR
 %token PrintSpaces
 %token PrintLine
+%token READ
 
 %%
 
@@ -71,6 +73,8 @@ Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt      : Write '(' ExprList ')' ';' {$$ = doPrintExprList($3);};
 Stmt      : PrintSpaces '(' Expr ')' ';'  {$$ = doPrintSpaces($3);};
 Stmt      : PrintLine ';'       {$$ = doPrintline();};
+Stmt      : READ '(' IdentList ')' ';' {$$ = doInputOnList($3);};
+Stmt      : READ '(' Id ')' ';' {$$ = doInputOnId($3);};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
 BExpr     : BExpr BOR BTerm     {$$ = doBOR($1, $3);};
@@ -85,8 +89,10 @@ BFactor   : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
 BFactor   : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
 BFactor   : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
 BFactor   : '(' BExpr ')'       {$$ = $2;};
+IdentList : IdentList ',' Id    {$$ = doAppendIdentList($1, $3);};
+IdentList : Id ',' Id           {$$ = doIdToIdList($1, $3);};
 ExprList  : ExprList ',' Expr   {$$ = doAppendExprList($1, $3);};
-ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};              
+ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};

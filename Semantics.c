@@ -13,6 +13,9 @@
 
 extern SymTab *table;
 
+int errorFlag1 = 0;
+
+
 /* Semantics support routines */
 
 /* BEGIN INTEGER EXPRESSIONS */
@@ -35,6 +38,7 @@ struct ExprRes *  doRval(char * name)  {
    if (!findName(table, name)) {
 		writeIndicator(getCurrentColumnNum());
 		writeMessage("Undeclared variable");
+    errorFlag1++;
    }
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
@@ -51,6 +55,7 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
    if (!findName(table, name)) {
 		writeIndicator(getCurrentColumnNum());
 		writeMessage("Undeclared variable");
+    errorFlag1++;
    }
 
   code = Expr->Instrs;
@@ -274,9 +279,6 @@ struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2) {
 /* END INTEGER EXPRESSIONS */
 
 /* BEGIN INTEGER I/O */
-// struct InstrSeq * doReadIO(struct IdentList * IdList){
-//
-// }
 
 struct InstrSeq * doPrintExprList(struct ExprResList * exprList){
   struct InstrSeq * code;
@@ -337,7 +339,6 @@ struct ExprResList * doExprToExprList(struct ExprRes * res1, struct ExprRes * re
 
   return resList1;
 }
-
 
 struct InstrSeq * doPrintline(){
   struct InstrSeq * code;
@@ -400,6 +401,95 @@ struct InstrSeq * doPrint(struct ExprRes * Expr) {
   free(Expr);
 
   return code;
+}
+
+struct InstrSeq * doInputOnId(char * name) {
+  struct InstrSeq * code;
+
+  if (!findName(table, name)) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("A variable in the read list is undeclared");
+    errorFlag1++;
+  }
+
+  code = GenInstr(NULL, "li", "$v0", "5", NULL);
+  AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+  AppendSeq(code,GenInstr(NULL,"sw","$v0", name, NULL));
+
+  return code;
+}
+
+struct InstrSeq * doInputOnList(struct IdList * IdList ) {
+  struct InstrSeq * code;
+  struct IdList * currentList;
+  struct IdList * oldList;
+
+  currentList = IdList;
+  code = GenInstr(NULL, NULL, NULL, NULL, NULL);
+
+  while (currentList) {
+    AppendSeq(code, GenInstr(NULL, "li", "$v0", "5", NULL));
+    AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+    AppendSeq(code,GenInstr(NULL,"sw","$v0", currentList->TheEntry->name, NULL));
+
+    oldList = currentList;
+    currentList = currentList->Next;
+
+    free(oldList);
+  }
+
+  return code;
+}
+
+struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName) {
+  struct IdList * newIdList;
+  struct IdList * currentList;
+  newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
+
+  currentList = IdentList;
+  while(currentList->Next) currentList = currentList->Next;
+
+  if (!findName(table, variableName)) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("A variable in the read list is undeclared");
+    errorFlag1++;
+  }
+  newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
+  newIdList->TheEntry = table->current;
+  newIdList->Next = NULL;
+  currentList->Next = newIdList;
+
+  return IdentList;
+}
+
+struct IdList * doIdToIdList(char * Id1, char * Id2){
+  struct IdList * IdList1;
+  struct IdList * IdList2;
+
+  if (!findName(table, Id1)) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("Variable 1 in the read list undeclared");
+    errorFlag1++;
+  }
+  IdList1 = (struct IdList * ) malloc(sizeof(struct IdList));
+  IdList1->TheEntry = table->current;
+
+  if(Id2 != NULL) {
+    if (!findName(table, Id2)) {
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("Variable 2 in the read list undeclared");
+      errorFlag1++;
+    }
+    IdList2 = (struct IdList * ) malloc(sizeof(struct IdList));
+    IdList2->TheEntry = table->current;
+
+    IdList1->Next = IdList2;
+    IdList2->Next = NULL;
+  } else {
+    IdList1->Next = NULL;
+  }
+
+  return IdList1;
 }
 
 /* END INTEGER I/O */
