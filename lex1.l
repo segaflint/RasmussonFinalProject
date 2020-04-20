@@ -16,6 +16,7 @@ digit [0-9]
 
 %%
 if					{return IF;}
+else 				{return ELSE;}
 int					{return Int;}
 for					{return FOR;}
 while				{return WHILE;}

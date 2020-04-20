@@ -241,6 +241,19 @@ struct InstrSeq * doIf(struct BExprRes * bRes, struct InstrSeq * seq) {
 	return seq2;
 }
 
+struct InstrSeq * doIfElse(struct BExprRes * bRes, struct InstrSeq * ifSeq, struct InstrSeq * elseSeq) {
+  struct InstrSeq * code;
+  char* endLabel;
+  endLabel = GenLabel();
+  code = AppendSeq(bRes->Instrs, ifSeq); // boolean clause and if body
+  AppendSeq(code, GenInstr(NULL, "j", endLabel, NULL, NULL));
+  AppendSeq(code, GenInstr(bRes->Label, NULL, NULL, NULL, NULL)); // run else
+  AppendSeq(code, elseSeq);
+  AppendSeq(code, GenInstr(endLabel, NULL, NULL, NULL, NULL));
+
+  return code;
+}
+
 struct BExprRes * doNot(struct BExprRes * bRes) {
   char * label = GenLabel();
   AppendSeq(bRes->Instrs, GenInstr(NULL, "j", label, NULL, NULL));

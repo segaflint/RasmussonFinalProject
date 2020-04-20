@@ -35,7 +35,6 @@ extern struct ExprRes *  doMod(struct ExprRes * Res1, struct ExprRes * Res2); //
 extern struct ExprRes *  doUnary(struct ExprRes * Res);
 extern struct ExprRes *  doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
-extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct BExprRes * doNot(struct BExprRes * Res);
 extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2);
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);
@@ -54,6 +53,8 @@ extern struct InstrSeq * doInputOnList(struct IdList * list );
 extern struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName);
 extern struct IdList * doIdToIdList(char * Id1, char * Id2);
 
+extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
+extern struct InstrSeq * doIfElse(struct BExprRes * bRes, struct InstrSeq * ifSeq, struct InstrSeq * elseSeq);
 
 
 

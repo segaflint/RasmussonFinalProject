@@ -47,6 +47,7 @@ extern SymTab *table;
 %token Int
 %token Write
 %token IF
+%token ELSE
 %token FOR
 %token WHILE
 %token EQ
@@ -76,6 +77,7 @@ Stmt      : PrintLine ';'       {$$ = doPrintline();};
 Stmt      : READ '(' IdentList ')' ';' {$$ = doInputOnList($3);};
 Stmt      : READ '(' Id ')' ';' {$$ = doInputOnId($3);};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
+Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}' {$$ = doIfElse($3, $6, $10);};
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}'	{$$ = doIf($3, $6);};
 BExpr     : BExpr BOR BTerm     {$$ = doBOR($1, $3);};
 BExpr     : BTerm               {$$ = $1;};
