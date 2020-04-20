@@ -18,6 +18,7 @@ digit [0-9]
 if					{return IF;}
 else 				{return ELSE;}
 int					{return Int;}
+boolean			{return BOOL;}
 for					{return FOR;}
 while				{return WHILE;}
 printLine   {return PrintLine;}
@@ -48,6 +49,7 @@ read 				{return READ;}
 \(					{return '(';}
 \)					{return ')';}
 \,					{return ',';}
+\: 					{return ':';}
 
 
 [ ]				{}

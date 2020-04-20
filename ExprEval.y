@@ -61,6 +61,7 @@ extern SymTab *table;
 %token PrintSpaces
 %token PrintLine
 %token READ
+%token BOOL
 
 %%
 
@@ -90,6 +91,7 @@ BFactor   : Expr LT Expr        {$$ = doBExprRel($1, $3, 3);};
 BFactor   : Expr GEQ Expr       {$$ = doBExprRel($1, $3, 4);};
 BFactor   : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
 BFactor   : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
+BFactor   : BOOL ':' Expr           {$$ = doExprToBFactor($3);};
 BFactor   : '(' BExpr ')'       {$$ = $2;};
 IdentList : IdentList ',' Id    {$$ = doAppendIdentList($1, $3);};
 IdentList : Id ',' Id           {$$ = doIdToIdList($1, $3);};

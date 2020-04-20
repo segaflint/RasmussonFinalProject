@@ -35,6 +35,7 @@ extern struct ExprRes *  doMod(struct ExprRes * Res1, struct ExprRes * Res2); //
 extern struct ExprRes *  doUnary(struct ExprRes * Res);
 extern struct ExprRes *  doExponent(struct ExprRes * Res1, struct ExprRes * Res2);
 extern struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int relationalOperator);
+extern struct BExprRes * doExprToBFactor(struct ExprRes * res);
 extern struct BExprRes * doNot(struct BExprRes * Res);
 extern struct BExprRes * doBAND(struct BExprRes * bRes1, struct BExprRes * bRes2);
 extern struct BExprRes * doBOR(struct BExprRes * bRes1, struct BExprRes * bRes2);

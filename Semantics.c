@@ -233,6 +233,20 @@ struct BExprRes * doBExprRel(struct ExprRes * Res1,  struct ExprRes * Res2, int 
 	return bRes;
 }
 
+struct BExprRes * doExprToBFactor(struct ExprRes * res){
+  struct BExprRes * bRes;
+
+ 	bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
+	bRes->Label = GenLabel();
+  AppendSeq(res->Instrs, GenInstr(NULL, "beq", TmpRegName(res->Reg), "0", bRes->Label));
+
+  ReleaseTmpReg(res->Reg);
+  bRes->Instrs = res->Instrs;
+  free(res);
+
+  return bRes;
+}
+
 struct InstrSeq * doIf(struct BExprRes * bRes, struct InstrSeq * seq) {
 	struct InstrSeq * seq2;
 	seq2 = AppendSeq(bRes->Instrs, seq);
