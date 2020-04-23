@@ -268,6 +268,33 @@ struct InstrSeq * doIfElse(struct BExprRes * bRes, struct InstrSeq * ifSeq, stru
   return code;
 }
 
+struct InstrSeq * doWhile(struct BExprRes * bRes, struct InstrSeq * seq) {
+  struct InstrSeq *returnSeq;
+  char * label;
+  label = GenLabel();
+  returnSeq = AppendSeq(GenInstr(label, NULL, NULL, NULL, NULL), bRes->Instrs);
+  AppendSeq(returnSeq, seq);
+  AppendSeq(returnSeq, GenInstr(NULL, "j", label, NULL, NULL));
+  AppendSeq(returnSeq, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+
+  return returnSeq;
+}
+
+struct InstrSeq * doFor(char * initVar, struct ExprRes * initExpr, struct BExprRes * bRes, char * updateVar, struct ExprRes * updateExprRes , struct InstrSeq * seq){
+  struct InstrSeq * returnSeq;
+  char * label;
+
+  label = GenLabel();
+  returnSeq = AppendSeq(doAssign(initVar, initExpr), GenInstr(label, NULL, NULL, NULL, NULL));
+  AppendSeq(returnSeq, bRes->Instrs);
+  AppendSeq(returnSeq, seq);
+  AppendSeq(returnSeq, doAssign(updateVar, updateExprRes));
+  AppendSeq(returnSeq, GenInstr(NULL, "j", label, NULL, NULL));
+  AppendSeq(returnSeq, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+
+  return returnSeq;
+}
+
 struct BExprRes * doNot(struct BExprRes * bRes) {
   char * label = GenLabel();
   AppendSeq(bRes->Instrs, GenInstr(NULL, "j", label, NULL, NULL));
@@ -521,6 +548,66 @@ struct IdList * doIdToIdList(char * Id1, char * Id2){
 
 /* END INTEGER I/O */
 
+/* BEGIN ARRAYS */
+extern struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
+  int valueReg;
+  int exprReg;
+  char * strAddr = (char *) malloc(sizeof(char)*7);
+
+  valueReg = AvailTmpReg();
+  exprReg = res->Reg;
+
+  if (!findName(table, name)) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("Undeclared array variable");
+    errorFlag1++;
+  } else if ( getCurrentAttr(table) == NULL){
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("This variable cannot be referenced as an array");
+    errorFlag1++;
+  } else {}
+
+  sprintf(strAddr, "0(%s)",TmpRegName(valueReg));
+
+  AppendSeq(res->Instrs, GenInstr(NULL, "la", TmpRegName(valueReg), name, NULL));
+  AppendSeq(res->Instrs, GenInstr(NULL, "sll", TmpRegName(exprReg), TmpRegName(exprReg), "2"));
+  AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(valueReg), TmpRegName(valueReg), TmpRegName(exprReg)));
+  AppendSeq(res->Instrs, GenInstr(NULL, "lw", TmpRegName(valueReg), strAddr, NULL));
+
+  ReleaseTmpReg(exprReg);
+  res->Reg = valueReg;
+
+  return res;
+}
+
+extern struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes) {
+  struct InstrSeq * code;
+  int addressReg;
+  char * strAddr = (char *) malloc(sizeof(char)*7);
+  addressReg = AvailTmpReg();
+
+  if (!findName(table, name)) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("Undeclared array variable");
+    errorFlag1++;
+  } else if ( getCurrentAttr(table) == NULL){
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("This variable cannot be referenced as an array");
+    errorFlag1++;
+  } else {}
+
+  sprintf(strAddr, "0(%s)", TmpRegName(addressReg));
+
+  code = arrayIndexRes->Instrs;
+  AppendSeq(code, assignmentRes->Instrs);
+  AppendSeq(code, GenInstr(NULL, "la", TmpRegName(addressReg), name ,NULL ));
+  AppendSeq(code, GenInstr(NULL, "sll", TmpRegName(arrayIndexRes->Reg), TmpRegName(arrayIndexRes->Reg), "2"));
+  AppendSeq(code, GenInstr(NULL, "add", TmpRegName(addressReg), TmpRegName(addressReg), TmpRegName(arrayIndexRes->Reg)));
+  AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(assignmentRes->Reg), strAddr, NULL));
+
+  return code;
+}
+
 /*
 
 extern struct InstrSeq * doIf(struct ExprRes *res1, struct ExprRes *res2, struct InstrSeq * seq) {
@@ -532,7 +619,7 @@ extern struct InstrSeq * doIf(struct ExprRes *res1, struct ExprRes *res2, struct
 	seq2 = AppendSeq(res1->Instrs, seq);
 	AppendSeq(seq2, GenInstr(label, NULL, NULL, NULL, NULL));
 	ReleaseTmpReg(res1->Reg);
-  	ReleaseTmpReg(res2->Reg);
+  ReleaseTmpReg(res2->Reg);
 	free(res1);
 	free(res2);
 	return seq2;
@@ -540,12 +627,14 @@ extern struct InstrSeq * doIf(struct ExprRes *res1, struct ExprRes *res2, struct
 
 */
 void
-Finish(struct InstrSeq *Code)
-{ struct InstrSeq *code;
+Finish(struct InstrSeq *Code){
+  struct InstrSeq *code;
   //struct SymEntry *entry;
-    int hasMore;
+  int hasMore;
+  int arraySize;
+  int arraySpace;
+  char * arraySpaceString = (char *) malloc(sizeof(char)*11);
   struct Attr * attr;
-
 
   code = GenInstr(NULL,".text",NULL,NULL,NULL);
   //AppendSeq(code,GenInstr(NULL,".align","2",NULL,NULL));
@@ -559,11 +648,20 @@ Finish(struct InstrSeq *Code)
   AppendSeq(code, GenInstr("_space", ".asciiz","\" \"", NULL, NULL));
   AppendSeq(code,GenInstr("_nl",".asciiz","\"\\n\"",NULL,NULL));
 
- hasMore = startIterator(table);
- while (hasMore) {
-	AppendSeq(code,GenInstr((char *) getCurrentName(table),".word","0",NULL,NULL));
+  hasMore = startIterator(table);
+
+  while (hasMore) {
+    if(!getCurrentAttr(table)) { // table has an attribute that is NULL; this is an int variable
+    AppendSeq(code,GenInstr((char *) getCurrentName(table),".word","0",NULL,NULL));
+
+    } else { // table has an attribute that isnt NULL; array
+      arraySize = (int) getCurrentAttr(table);
+      arraySpace = arraySize * 4;
+      sprintf(arraySpaceString, "%d", arraySpace);
+      AppendSeq(code, GenInstr((char *) getCurrentName(table), ".space", arraySpaceString, NULL, NULL ));
+    }
     hasMore = nextEntry(table);
- }
+  }
 
   WriteSeq(code);
 

@@ -56,7 +56,11 @@ extern struct IdList * doIdToIdList(char * Id1, char * Id2);
 
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct InstrSeq * doIfElse(struct BExprRes * bRes, struct InstrSeq * ifSeq, struct InstrSeq * elseSeq);
+extern struct InstrSeq * doWhile(struct BExprRes * bRes, struct InstrSeq * seq);
+extern struct InstrSeq * doFor(char * initVar, struct ExprRes * initExpr, struct BExprRes * bRes, char * updateVar, struct ExprRes * updateExprRes , struct InstrSeq * seq);
 
+extern struct ExprRes * doArrayRval(char * name, struct ExprRes * res);
+extern struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes );
 
 
 

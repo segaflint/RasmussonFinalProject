@@ -50,6 +50,8 @@ read 				{return READ;}
 \)					{return ')';}
 \,					{return ',';}
 \: 					{return ':';}
+\[					{return '[';}
+\]					{return ']';}
 
 
 [ ]				{}
