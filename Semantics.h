@@ -62,6 +62,15 @@ extern struct InstrSeq * doFor(char * initVar, struct ExprRes * initExpr, struct
 extern struct ExprRes * doArrayRval(char * name, struct ExprRes * res);
 extern struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes );
 
+extern void defineAndAppendFunction(void * table, char * functionName, struct InstrSeq * codeBody);
+extern struct InstrSeq * doReturnInt(struct ExprRes * res);
+extern struct InstrSeq * doReturn();
+extern void checkReturn();
+extern struct InstrSeq * doVoidFunctionCall(char * name);
+extern struct ExprRes * doIntFunctionCall(char * name);
+
 
 
 extern void	Finish(struct InstrSeq *Code);
+
+void generateTableInstructions(struct InstrSeq * code); 

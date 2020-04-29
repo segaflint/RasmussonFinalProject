@@ -25,6 +25,8 @@ printLine   {return PrintLine;}
 printSpaces {return PrintSpaces;}
 print					{return Write;}
 read 				{return READ;}
+return 			{return RETURN;}
+void 				{return VOID;}
 {letter}({letter}|{digit})*	{return Ident;}
 {digit}{digit}*		{return IntLit;}
 \=\=				{return EQ;}

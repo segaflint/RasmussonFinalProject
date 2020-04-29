@@ -15,6 +15,9 @@ extern int yyerror(char *);
 void dumpTable();
 
 extern SymTab *table;
+extern SymTab *intFunctionTable;
+extern SymTab *voidFunctionTable;
+extern int functionBodyFlag;
 
 %}
 
@@ -62,16 +65,25 @@ extern SymTab *table;
 %token PrintLine
 %token READ
 %token BOOL
+%token RETURN
+%token VOID
 
 %%
 
 Prog			:	Declarations StmtSeq				{Finish($2); } ;
 Declarations	:	Dec Declarations					{ };
 Declarations	:						  		{ };
-Dec			:	Int Id {enterName(table, $2); }';'	{};
-Dec     : Int Id {enterName(table, $2); }'[' IntLit {setCurrentAttr(table, (void *) atoi(yytext));}']' ';' {};
+Dec     : IntDec                {};
+Dec     : FunctionDec           {};
+IntDec			:	Int Id {enterName(table, $2); }';'	{};
+IntDec     : Int Id {enterName(table, $2); }'[' IntLit {setCurrentAttr(table, (void *) atoi(yytext));}']' ';' {};
+FunctionDec     : Int Id {enterName(intFunctionTable, $2);} '(' ')' '{' {functionBodyFlag++;} StmtSeq '}'{checkReturn(); defineAndAppendFunction((void *)intFunctionTable, $2, $8);};
+FunctionDec     : VOID Id {enterName(voidFunctionTable, $2);} '(' ')' '{' StmtSeq '}'{ defineAndAppendFunction((void *) voidFunctionTable, $2, $7);};
 StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
+Stmt      : Id '(' ')' ';'      {$$ = doVoidFunctionCall($1);};
+Stmt      : RETURN Expr ';'     {$$ = doReturnInt($2);};
+Stmt      : RETURN ';'          {$$ = doReturn();};
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt      : Write '(' ExprList ')' ';' {$$ = doPrintExprList($3);};
 Stmt      : PrintSpaces '(' Expr ')' ';'  {$$ = doPrintSpaces($3);};
@@ -101,6 +113,7 @@ IdentList : IdentList ',' Id    {$$ = doAppendIdentList($1, $3);};
 IdentList : Id ',' Id           {$$ = doIdToIdList($1, $3);};
 ExprList  : ExprList ',' Expr   {$$ = doAppendExprList($1, $3);};
 ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};
+Expr      : Id '(' ')'          {$$ = doIntFunctionCall($1);};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};

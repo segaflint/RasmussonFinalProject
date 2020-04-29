@@ -12,9 +12,12 @@
 #include "IOMngr.h"
 
 extern SymTab *table;
+extern SymTab *intFunctionTable;
+extern SymTab *voidFunctionTable;
 
 int errorFlag1 = 0;
-
+int functionBodyFlag = 0;
+char * finishFunctionLabel = "FinishFunction";
 
 /* Semantics support routines */
 
@@ -360,8 +363,8 @@ struct InstrSeq * doPrintExprList(struct ExprResList * exprList){
     free(oldList);
   }
 
-  AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
-  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  // AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+  // AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
 
   return code;
 }
@@ -447,9 +450,9 @@ struct InstrSeq * doPrint(struct ExprRes * Expr) {
   AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
 
-  AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
-  AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
-  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  // AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
+  // AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
+  // AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
 
   ReleaseTmpReg(Expr->Reg);
   free(Expr);
@@ -549,7 +552,7 @@ struct IdList * doIdToIdList(char * Id1, char * Id2){
 /* END INTEGER I/O */
 
 /* BEGIN ARRAYS */
-extern struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
+struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
   int valueReg;
   int exprReg;
   char * strAddr = (char *) malloc(sizeof(char)*7);
@@ -580,7 +583,7 @@ extern struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
   return res;
 }
 
-extern struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes) {
+struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes) {
   struct InstrSeq * code;
   int addressReg;
   char * strAddr = (char *) malloc(sizeof(char)*7);
@@ -607,6 +610,67 @@ extern struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexR
 
   return code;
 }
+
+void defineAndAppendFunction(void * table, char * functionName, struct InstrSeq * codeBody ){
+  findName((SymTab *)table, functionName);
+  setCurrentAttr((SymTab *)table, (void*) codeBody);
+}
+
+struct InstrSeq * doReturnInt(struct ExprRes * res){
+  AppendSeq(res->Instrs, GenInstr(NULL, "addi", "$v0", TmpRegName(res->Reg), "0"));
+  AppendSeq(res->Instrs, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
+  //possibly need to do something with sp here
+  ReleaseTmpReg(res->Reg);
+  functionBodyFlag--;
+  return res->Instrs;
+}
+
+struct InstrSeq * doReturn(){
+  struct InstrSeq * code;
+  code = GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL);
+
+  return code;
+}
+
+void checkReturn() {
+  if(functionBodyFlag > 0){
+    writeIndicator(getCurrentColumnNum());
+		writeMessage("return statement expected");
+    errorFlag1++;
+  }
+  functionBodyFlag = 0;
+}
+
+struct InstrSeq * doVoidFunctionCall(char * name) {
+  struct InstrSeq * code;
+
+  if (!findName(voidFunctionTable, name)) {
+   writeIndicator(getCurrentColumnNum());
+   writeMessage("No such void function exists");
+   errorFlag1++;
+  }
+
+  code = GenInstr(NULL, "jal", name, NULL, NULL);
+  return code;
+}
+
+struct ExprRes * doIntFunctionCall(char * name) {
+  struct ExprRes * res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+  int reg = AvailTmpReg();
+
+  if (!findName(intFunctionTable, name)) {
+   writeIndicator(getCurrentColumnNum());
+   writeMessage("No such int function exists");
+   errorFlag1++;
+  }
+
+  res->Instrs = GenInstr(NULL, "jal", name, NULL, NULL);
+  AppendSeq(res->Instrs, GenInstr(NULL, "addi", TmpRegName(reg), "$v0", "0"));
+  res->Reg = reg;
+
+  return res;
+}
+
 
 /*
 
@@ -643,6 +707,13 @@ Finish(struct InstrSeq *Code){
   AppendSeq(code,Code);
   AppendSeq(code, GenInstr(NULL, "li", "$v0", "10", NULL));
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+  generateTableInstructions(code);
+
+  AppendSeq(code, GenInstr(finishFunctionLabel, NULL, NULL, NULL, NULL));
+  AppendSeq(code, RestoreSeq());
+  AppendSeq(code, GenInstr(NULL, "jr", "$ra", NULL, NULL));
+
   AppendSeq(code,GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code,GenInstr(NULL,".align","4",NULL,NULL));
   AppendSeq(code, GenInstr("_space", ".asciiz","\" \"", NULL, NULL));
@@ -652,7 +723,7 @@ Finish(struct InstrSeq *Code){
 
   while (hasMore) {
     if(!getCurrentAttr(table)) { // table has an attribute that is NULL; this is an int variable
-    AppendSeq(code,GenInstr((char *) getCurrentName(table),".word","0",NULL,NULL));
+      AppendSeq(code,GenInstr((char *) getCurrentName(table),".word","0",NULL,NULL));
 
     } else { // table has an attribute that isnt NULL; array
       arraySize = (int) getCurrentAttr(table);
@@ -666,4 +737,29 @@ Finish(struct InstrSeq *Code){
   WriteSeq(code);
 
   return;
+}
+
+void generateTableInstructions(struct InstrSeq * code) {
+  int hasMore;
+  hasMore = startIterator(intFunctionTable);
+
+  while (hasMore) {
+    AppendSeq(code, GenInstr( getCurrentName(intFunctionTable), NULL, NULL, NULL, NULL ));
+    AppendSeq(code, SaveSeq());
+    AppendSeq(code, (struct InstrSeq *) getCurrentAttr(intFunctionTable));
+    AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
+
+    hasMore = nextEntry(intFunctionTable);
+  }
+
+  hasMore = startIterator(voidFunctionTable);
+
+  while(hasMore) {
+    AppendSeq(code, GenInstr(getCurrentName(voidFunctionTable), NULL, NULL, NULL, NULL));
+    AppendSeq(code, SaveSeq());
+    AppendSeq(code, (struct InstrSeq *) getCurrentAttr(voidFunctionTable));
+    AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
+
+    hasMore = nextEntry(voidFunctionTable);
+  }
 }
