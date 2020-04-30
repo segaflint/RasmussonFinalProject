@@ -14,9 +14,16 @@
 extern SymTab *table;
 extern SymTab *intFunctionTable;
 extern SymTab *voidFunctionTable;
+extern SymTab *localTable;
+extern SymTab *functionParamsTable;
 
 int errorFlag1 = 0;
-int functionBodyFlag = 0;
+int returnFlag = 0;
+int funcContextFlag= 0;
+int noParamsFlag = 0;
+int noLocalsFlag = 0;
+int localVarCount = 0;
+int functionParamsCount = 0;
 char * finishFunctionLabel = "FinishFunction";
 
 /* Semantics support routines */
@@ -35,17 +42,25 @@ struct ExprRes *  doIntLit(char * digits)  {
 }
 
 struct ExprRes *  doRval(char * name)  {
+  struct ExprRes *res;
 
-   struct ExprRes *res;
-
-   if (!findName(table, name)) {
-		writeIndicator(getCurrentColumnNum());
-		writeMessage("Undeclared variable");
-    errorFlag1++;
-   }
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
-  res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
+
+  if(funcContextFlag && findName(localTable, name)) {
+    char offset[8];
+    int varOffset = (int) getCurrentAttr(localTable);
+    sprintf(offset, "%d($sp)", ((localVarCount - varOffset)-1)*4);
+
+    res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg), offset, NULL);
+  } else {
+    if (!findName(table, name)) {
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("Undeclared variable");
+      errorFlag1++;
+    }
+    res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
+  }
 
   return res;
 }
@@ -54,16 +69,21 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
 
   struct InstrSeq *code;
 
-
-   if (!findName(table, name)) {
-		writeIndicator(getCurrentColumnNum());
-		writeMessage("Undeclared variable");
-    errorFlag1++;
-   }
-
   code = Expr->Instrs;
+  if(funcContextFlag && findName(localTable, name)) { // within a function and name found
+    char offset[8];
+    int varOffset = (int) getCurrentAttr(localTable);
 
-  AppendSeq(code,GenInstr(NULL,"sw",TmpRegName(Expr->Reg), name,NULL));
+    sprintf(offset, "%d($sp)", ((localVarCount - varOffset)-1)*4);
+    AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Expr->Reg), offset, NULL));
+  } else {
+    if (!findName(table, name)) {
+		    writeIndicator(getCurrentColumnNum());
+		    writeMessage("Undeclared variable");
+        errorFlag1++;
+    }
+    AppendSeq(code,GenInstr(NULL,"sw",TmpRegName(Expr->Reg), name,NULL));
+  }
 
   ReleaseTmpReg(Expr->Reg);
   free(Expr);
@@ -612,33 +632,61 @@ struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, str
 }
 
 void defineAndAppendFunction(void * table, char * functionName, struct InstrSeq * codeBody ){
+  struct InstrSeq * code = (struct InstrSeq *) malloc(sizeof(struct InstrSeq));
+  int pureLocalsCount;
+  char offset[8];
+  char shrinkAmount[8];
+
   findName((SymTab *)table, functionName);
-  setCurrentAttr((SymTab *)table, (void*) codeBody);
+  pureLocalsCount = localVarCount - functionParamsCount;
+  sprintf(offset, "%d", -(pureLocalsCount*4));
+  AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", offset)); // decrease stack pointer size of num locals and one more for $ra
+  for(int i = 0; i < pureLocalsCount; i++) {// for the count of locals, initialize them to zero
+    sprintf(offset, "%d($sp)", i*4);
+    AppendSeq(code, GenInstr(NULL, "sw", "$zero", offset, NULL));
+  }
+
+  AppendSeq(code, codeBody);
+
+  sprintf(shrinkAmount, "%d", (localVarCount*4));
+  AppendSeq(code, GenInstr( NULL, "addi", "$sp", "$sp", shrinkAmount));
+  AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
+
+  setCurrentAttr((SymTab *)table, (void*) code);
+
 }
 
 struct InstrSeq * doReturnInt(struct ExprRes * res){
+  char shrinkAmount[8];
+
   AppendSeq(res->Instrs, GenInstr(NULL, "addi", "$v0", TmpRegName(res->Reg), "0"));
+  sprintf(shrinkAmount, "%d", (localVarCount*4)); // shrink stack from locals, params, and $ra
+  AppendSeq(res->Instrs, GenInstr( NULL, "addi", "$sp", "$sp", shrinkAmount));
   AppendSeq(res->Instrs, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
-  //possibly need to do something with sp here
+
+
   ReleaseTmpReg(res->Reg);
-  functionBodyFlag--;
+  returnFlag--;
   return res->Instrs;
 }
 
 struct InstrSeq * doReturn(){
   struct InstrSeq * code;
-  code = GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL);
+  char shrinkAmount[8];
+  sprintf(shrinkAmount, "%d", (localVarCount*4));
+  code = GenInstr( NULL, "addi", "$sp", "$sp", shrinkAmount);
+  AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
 
   return code;
 }
 
 void checkReturn() {
-  if(functionBodyFlag > 0){
+  if(returnFlag > 0){
     writeIndicator(getCurrentColumnNum());
 		writeMessage("return statement expected");
     errorFlag1++;
   }
-  functionBodyFlag = 0;
+  returnFlag = 0;
 }
 
 struct InstrSeq * doVoidFunctionCall(char * name) {
@@ -650,13 +698,19 @@ struct InstrSeq * doVoidFunctionCall(char * name) {
    errorFlag1++;
   }
 
-  code = GenInstr(NULL, "jal", name, NULL, NULL);
+  code = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
+  AppendSeq(code, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
+  AppendSeq(code, SaveSeq());
+  AppendSeq(code, GenInstr(NULL, "jal", name, NULL, NULL));
+  AppendSeq(code, RestoreSeq());
+  AppendSeq(code, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
+  AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
   return code;
 }
 
 struct ExprRes * doIntFunctionCall(char * name) {
   struct ExprRes * res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
-  int reg = AvailTmpReg();
+  int reg;
 
   if (!findName(intFunctionTable, name)) {
    writeIndicator(getCurrentColumnNum());
@@ -664,13 +718,34 @@ struct ExprRes * doIntFunctionCall(char * name) {
    errorFlag1++;
   }
 
-  res->Instrs = GenInstr(NULL, "jal", name, NULL, NULL);
+  res->Instrs = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
+  AppendSeq(res->Instrs, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
+  AppendSeq(res->Instrs, SaveSeq());
+  AppendSeq(res->Instrs, GenInstr(NULL, "jal", name, NULL, NULL));
+  AppendSeq(res->Instrs, RestoreSeq());
+  reg = AvailTmpReg();
   AppendSeq(res->Instrs, GenInstr(NULL, "addi", TmpRegName(reg), "$v0", "0"));
+  AppendSeq(res->Instrs, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
+  AppendSeq(res->Instrs, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
+
   res->Reg = reg;
 
   return res;
 }
 
+void insertScopedName(char * name) {
+  enterName(localTable, name);
+  setCurrentAttr(localTable, (void *) localVarCount);
+  localVarCount++;
+
+}
+
+void cleanUpFunction() {
+  functionParamsCount = 0;
+  localVarCount = 0;
+  destroySymTab(localTable);
+  localTable = NULL;
+}
 
 /*
 
@@ -710,9 +785,7 @@ Finish(struct InstrSeq *Code){
 
   generateTableInstructions(code);
 
-  AppendSeq(code, GenInstr(finishFunctionLabel, NULL, NULL, NULL, NULL));
-  AppendSeq(code, RestoreSeq());
-  AppendSeq(code, GenInstr(NULL, "jr", "$ra", NULL, NULL));
+  appendFinishedFunction(code);
 
   AppendSeq(code,GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code,GenInstr(NULL,".align","4",NULL,NULL));
@@ -745,9 +818,7 @@ void generateTableInstructions(struct InstrSeq * code) {
 
   while (hasMore) {
     AppendSeq(code, GenInstr( getCurrentName(intFunctionTable), NULL, NULL, NULL, NULL ));
-    AppendSeq(code, SaveSeq());
     AppendSeq(code, (struct InstrSeq *) getCurrentAttr(intFunctionTable));
-    AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
 
     hasMore = nextEntry(intFunctionTable);
   }
@@ -756,10 +827,13 @@ void generateTableInstructions(struct InstrSeq * code) {
 
   while(hasMore) {
     AppendSeq(code, GenInstr(getCurrentName(voidFunctionTable), NULL, NULL, NULL, NULL));
-    AppendSeq(code, SaveSeq());
     AppendSeq(code, (struct InstrSeq *) getCurrentAttr(voidFunctionTable));
-    AppendSeq(code, GenInstr(NULL, "j", finishFunctionLabel, NULL, NULL));
 
     hasMore = nextEntry(voidFunctionTable);
   }
+}
+
+void appendFinishedFunction(struct InstrSeq * code){
+  AppendSeq(code, GenInstr(finishFunctionLabel, NULL, NULL, NULL, NULL));
+  AppendSeq(code, GenInstr(NULL, "jr", "$ra", NULL, NULL));
 }

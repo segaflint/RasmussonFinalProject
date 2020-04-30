@@ -17,7 +17,13 @@ void dumpTable();
 extern SymTab *table;
 extern SymTab *intFunctionTable;
 extern SymTab *voidFunctionTable;
-extern int functionBodyFlag;
+extern SymTab *localTable;
+extern SymTab *functionParamsTable;
+extern int returnFlag;
+extern int funcContextFlag;
+extern int noParamsFlag;
+extern int noLocalsFlag;
+extern int functionParamsCount;
 
 %}
 
@@ -44,6 +50,8 @@ extern int functionBodyFlag;
 %type <BExprRes> BFactor
 %type <ExprResList> ExprList
 %type <IdList> IdentList
+%type <IdList> ParamList
+%type <IdList> LocalsList
 
 %token Ident
 %token IntLit
@@ -77,9 +85,16 @@ Dec     : IntDec                {};
 Dec     : FunctionDec           {};
 IntDec			:	Int Id {enterName(table, $2); }';'	{};
 IntDec     : Int Id {enterName(table, $2); }'[' IntLit {setCurrentAttr(table, (void *) atoi(yytext));}']' ';' {};
-FunctionDec     : Int Id {enterName(intFunctionTable, $2);} '(' ')' '{' {functionBodyFlag++;} StmtSeq '}'{checkReturn(); defineAndAppendFunction((void *)intFunctionTable, $2, $8);};
-FunctionDec     : VOID Id {enterName(voidFunctionTable, $2);} '(' ')' '{' StmtSeq '}'{ defineAndAppendFunction((void *) voidFunctionTable, $2, $7);};
-StmtSeq 		:	Stmt StmtSeq			{$$ = AppendSeq($1, $2); } ;
+FunctionDec     : Int Id {enterName(intFunctionTable, $2);enterName(functionParamsTable, $2); localTable = createSymTab(10);} '(' ParamList ')' LocalsList '{' {returnFlag++; funcContextFlag++;} StmtSeq {funcContextFlag--;}'}'{checkReturn(); defineAndAppendFunction((void *)intFunctionTable, $2, $10); setCurrentAttr(functionParamsTable, (void *) functionParamsCount); cleanUpFunction();};
+FunctionDec     : VOID Id {enterName(voidFunctionTable, $2); enterName(functionParamsTable, $2); localTable = createSymTab(10);} '(' ParamList ')' LocalsList '{' {funcContextFlag++;} StmtSeq {funcContextFlag--;}'}'{ defineAndAppendFunction((void *) voidFunctionTable, $2, $10); setCurrentAttr(functionParamsTable, (void *) functionParamsCount); cleanUpFunction();};
+ParamList : Param ',' ParamList {};
+ParamList : Param               {};
+ParamList :                     {};
+Param     : Int Id              {insertScopedName($2); functionParamsCount++;};
+LocalsList: LocalDec LocalsList {};
+LocalsList:                     {};
+LocalDec  : Int Id ';'          {insertScopedName($2);};
+StmtSeq 	:	Stmt StmtSeq			  {$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt      : Id '(' ')' ';'      {$$ = doVoidFunctionCall($1);};
 Stmt      : RETURN Expr ';'     {$$ = doReturnInt($2);};
@@ -113,7 +128,6 @@ IdentList : IdentList ',' Id    {$$ = doAppendIdentList($1, $3);};
 IdentList : Id ',' Id           {$$ = doIdToIdList($1, $3);};
 ExprList  : ExprList ',' Expr   {$$ = doAppendExprList($1, $3);};
 ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};
-Expr      : Id '(' ')'          {$$ = doIntFunctionCall($1);};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};
 Expr      : Expr '-' Term       {$$ = doArith($1, $3, "sub");};
 Expr			:	Term						    {$$ = $1;};
@@ -128,6 +142,7 @@ Expo      : '(' Expr ')'        { $$ = $2;};
 Expo   		:	IntLit							{ $$ = doIntLit(yytext); };
 Expo  		:	Id								  { $$ = doRval($1); };
 Expo      : Id '[' Expr ']'     { $$ = doArrayRval($1, $3);};
+Expo      : Id '(' ')'          {$$ = doIntFunctionCall($1);};
 Id			  : Ident								{ $$ = strdup(yytext);}
 
 %%

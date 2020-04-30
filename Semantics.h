@@ -69,8 +69,11 @@ extern void checkReturn();
 extern struct InstrSeq * doVoidFunctionCall(char * name);
 extern struct ExprRes * doIntFunctionCall(char * name);
 
+extern void insertScopedName(char * name);
 
+extern void cleanUpFunction();
 
 extern void	Finish(struct InstrSeq *Code);
 
-void generateTableInstructions(struct InstrSeq * code); 
+void generateTableInstructions(struct InstrSeq * code);
+void appendFinishedFunction(struct InstrSeq * code);
