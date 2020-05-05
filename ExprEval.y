@@ -49,7 +49,8 @@ extern int functionParamsCount;
 %type <BExprRes> BTerm
 %type <BExprRes> BFactor
 %type <ExprResList> ExprList
-%type <IdList> IdentList
+%type <IdList> ReadIdentList
+%type <IdList> Variable
 %type <IdList> ParamList
 %type <IdList> LocalsList
 
@@ -91,9 +92,11 @@ ParamList : Param ',' ParamList {};
 ParamList : Param               {};
 ParamList :                     {};
 Param     : Int Id              {insertScopedName($2); functionParamsCount++;};
+Param     : Int Id'['']'        {insertScopedName($2); functionParamsCount++;};
 LocalsList: LocalDec LocalsList {};
 LocalsList:                     {};
 LocalDec  : Int Id ';'          {insertScopedName($2);};
+LocalDec  : Int Id '[' IntLit ']' ';' {};
 StmtSeq 	:	Stmt StmtSeq			  {$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt      : Id '(' ')' ';'      {$$ = doVoidFunctionCall($1);};
@@ -103,8 +106,7 @@ Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
 Stmt      : Write '(' ExprList ')' ';' {$$ = doPrintExprList($3);};
 Stmt      : PrintSpaces '(' Expr ')' ';'  {$$ = doPrintSpaces($3);};
 Stmt      : PrintLine ';'       {$$ = doPrintline();};
-Stmt      : READ '(' IdentList ')' ';' {$$ = doInputOnList($3);};
-Stmt      : READ '(' Id ')' ';' {$$ = doInputOnId($3);};
+Stmt      : READ '(' ReadIdentList ')' ';' {$$ = doInputOnList($3);};
 Stmt			:	Id '=' Expr ';'			{$$ = doAssign($1, $3);} ;
 Stmt      : Id '[' Expr ']' '=' Expr ';'  {$$ = doArrayAssign($1, $3, $6);};
 Stmt			:	IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}' {$$ = doIfElse($3, $6, $10);};
@@ -124,8 +126,10 @@ BFactor   : Expr GT Expr        {$$ = doBExprRel($1, $3, 5);};
 BFactor   : Expr NEQ Expr       {$$ = doBExprRel($1, $3, 6);};
 BFactor   : BOOL ':' Expr       {$$ = doExprToBFactor($3);};
 BFactor   : '(' BExpr ')'       {$$ = $2;};
-IdentList : IdentList ',' Id    {$$ = doAppendIdentList($1, $3);};
-IdentList : Id ',' Id           {$$ = doIdToIdList($1, $3);};
+ReadIdentList : Variable ',' ReadIdentList  {$$ = doAppendIdentList($1, $3);};
+ReadIdentList : Variable        {$$ = $1;};
+Variable  : Id                  {$$ = doIdToIdList($1);};
+Variable  : Id '[' Expr ']'     {$$ = doArrayToIdList($1, $3);};
 ExprList  : ExprList ',' Expr   {$$ = doAppendExprList($1, $3);};
 ExprList  : Expr ',' Expr       {$$ = doExprToExprList($1, $3);};
 Expr			:	Expr '+' Term				{$$ = doArith($1, $3, "add");};

@@ -15,7 +15,7 @@ extern SymTab *table;
 extern SymTab *intFunctionTable;
 extern SymTab *voidFunctionTable;
 extern SymTab *localTable;
-extern SymTab *functionParamsTable;
+// extern SymTab *functionParamsTable;
 
 int errorFlag1 = 0;
 int returnFlag = 0;
@@ -480,34 +480,50 @@ struct InstrSeq * doPrint(struct ExprRes * Expr) {
   return code;
 }
 
-struct InstrSeq * doInputOnId(char * name) {
-  struct InstrSeq * code;
-
-  if (!findName(table, name)) {
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("A variable in the read list is undeclared");
-    errorFlag1++;
-  }
-
-  code = GenInstr(NULL, "li", "$v0", "5", NULL);
-  AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
-  AppendSeq(code,GenInstr(NULL,"sw","$v0", name, NULL));
-
-  return code;
-}
+// struct InstrSeq * doInputOnId(char * name) {
+//   struct InstrSeq * code;
+//
+//   if (!findName(table, name)) {
+//     writeIndicator(getCurrentColumnNum());
+//     writeMessage("A variable in the read list is undeclared");
+//     errorFlag1++;
+//   }
+//
+//   code = GenInstr(NULL, "li", "$v0", "5", NULL);
+//   AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+//   AppendSeq(code,GenInstr(NULL,"sw","$v0", name, NULL));
+//
+//   return code;
+// }
 
 struct InstrSeq * doInputOnList(struct IdList * IdList ) {
   struct InstrSeq * code;
   struct IdList * currentList;
   struct IdList * oldList;
+  struct ExprRes * assignmentRes;
 
   currentList = IdList;
   code = GenInstr(NULL, NULL, NULL, NULL, NULL);
 
   while (currentList) {
-    AppendSeq(code, GenInstr(NULL, "li", "$v0", "5", NULL));
-    AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
-    AppendSeq(code,GenInstr(NULL,"sw","$v0", currentList->TheEntry->name, NULL));
+
+    assignmentRes = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+    assignmentRes->Reg = AvailTmpReg();
+    assignmentRes->Instrs = GenInstr(NULL, "li", "$v0", "5", NULL);
+    AppendSeq(assignmentRes->Instrs, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+    AppendSeq(assignmentRes->Instrs, GenInstr(NULL, "addi", TmpRegName(assignmentRes->Reg), "$v0", "0"));
+
+    if( funcContextFlag && findName(localTable, currentList->TheEntry->name)) { // context is local
+      if(currentList->ArrayIndexRes) { // this is an array
+        AppendSeq(code, doArrayAssign(getCurrentName(localTable), currentList->ArrayIndexRes, assignmentRes));
+
+      } else { // not an array
+
+      }
+    } else {
+
+      AppendSeq(code,GenInstr(NULL,"sw","$v0", currentList->TheEntry->name, NULL)); // local variable
+    }
 
     oldList = currentList;
     currentList = currentList->Next;
@@ -518,55 +534,73 @@ struct InstrSeq * doInputOnList(struct IdList * IdList ) {
   return code;
 }
 
-struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName) {
-  struct IdList * newIdList;
-  struct IdList * currentList;
-  newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
+struct IdList * doArrayToIdList(char * name, struct ExprRes * indexRes ){
+  struct IdList * newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
 
-  currentList = IdentList;
-  while(currentList->Next) currentList = currentList->Next;
+  if(funcContextFlag && findName(localTable, name)) { //name is found in locals
+    newIdList->TheEntry = localTable->current; // attribute on local is a variables index in local variables
 
-  if (!findName(table, variableName)) {
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("A variable in the read list is undeclared");
-    errorFlag1++;
-  }
-  newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
-  newIdList->TheEntry = table->current;
-  newIdList->Next = NULL;
-  currentList->Next = newIdList;
-
-  return IdentList;
-}
-
-struct IdList * doIdToIdList(char * Id1, char * Id2){
-  struct IdList * IdList1;
-  struct IdList * IdList2;
-
-  if (!findName(table, Id1)) {
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("Variable 1 in the read list undeclared");
-    errorFlag1++;
-  }
-  IdList1 = (struct IdList * ) malloc(sizeof(struct IdList));
-  IdList1->TheEntry = table->current;
-
-  if(Id2 != NULL) {
-    if (!findName(table, Id2)) {
+  } else {
+    if(!findName(table, name)) {
       writeIndicator(getCurrentColumnNum());
-      writeMessage("Variable 2 in the read list undeclared");
+      writeMessage("No array by such a name exists");
       errorFlag1++;
     }
-    IdList2 = (struct IdList * ) malloc(sizeof(struct IdList));
-    IdList2->TheEntry = table->current;
 
-    IdList1->Next = IdList2;
-    IdList2->Next = NULL;
-  } else {
-    IdList1->Next = NULL;
+    newIdList->TheEntry = table->current; //attribute on global is an array size
+  }
+  newIdList->Next = NULL;
+  newIdList->ArrayIndexRes = indexRes;
+
+  return newIdList;
+}
+
+struct IdList * doAppendIdentList(struct IdList * IdentList1, struct IdList * IdentList2) {
+  struct IdList * currentList = IdentList1;
+
+  while(currentList->Next) currentList = currentList->Next;
+
+  currentList->Next = IdentList2;
+
+  return currentList;
+}
+
+struct IdList * doIdToIdList(char * name){
+  struct IdList * newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
+
+  if(funcContextFlag && findName(localTable, name)) { //name found in locals
+    newIdList = localTable->current;
+  } else  {
+    if (!findName(table, name)) {
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("A variable in the read list undeclared");
+      errorFlag1++;
+    }
+    newIdList->TheEntry = table->current; //attribute on global is an array size
+
   }
 
-  return IdList1;
+  newIdList->Next = NULL;
+  newIdList->ArrayIndexRes = NULL;
+  // IdList1 = (struct IdList * ) malloc(sizeof(struct IdList));
+  // IdList1->TheEntry = table->current;
+  //
+  // if(Id2 != NULL) {
+  //   if (!findName(table, Id2)) {
+  //     writeIndicator(getCurrentColumnNum());
+  //     writeMessage("Variable 2 in the read list undeclared");
+  //     errorFlag1++;
+  //   }
+  //   IdList2 = (struct IdList * ) malloc(sizeof(struct IdList));
+  //   IdList2->TheEntry = table->current;
+  //
+  //   IdList1->Next = IdList2;
+  //   IdList2->Next = NULL;
+  // } else {
+  //   IdList1->Next = NULL;
+  // }
+
+  return newIdList;
 }
 
 /* END INTEGER I/O */
@@ -605,28 +639,53 @@ struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
 
 struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes) {
   struct InstrSeq * code;
-  int addressReg;
-  char * strAddr = (char *) malloc(sizeof(char)*7);
-  addressReg = AvailTmpReg();
-
-  if (!findName(table, name)) {
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("Undeclared array variable");
-    errorFlag1++;
-  } else if ( getCurrentAttr(table) == NULL){
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("This variable cannot be referenced as an array");
-    errorFlag1++;
-  } else {}
-
-  sprintf(strAddr, "0(%s)", TmpRegName(addressReg));
+  int addressReg = AvailTmpReg();
+  char * strAddr[7];
+  int stackAddress;
 
   code = arrayIndexRes->Instrs;
   AppendSeq(code, assignmentRes->Instrs);
-  AppendSeq(code, GenInstr(NULL, "la", TmpRegName(addressReg), name ,NULL ));
+
+  if(funcContextFlag && findName(localTable, name)) {
+    char offset[8];
+    int varOffset = (int) getCurrentAttr(localTable);
+    int pureLocalsCount = localVarCount - functionParamsCount;
+
+    if(varOffset >= functionParamsCount) { // locally allocated variable array
+      sprintf(offset, "%d", varOffset*4 )
+      AppendSeq(code, GenInstr(NULL, "addi", TmpRegName(addressReg), "$sp", offset));
+    } else { // globally allocated
+
+      sprintf(offset, "%d($sp)", ((localVarCount - varOffset)-1)*4);
+      AppendSeq(code, GenInstr(NULL, "lw", TmpRegName(addressReg), offset ,NULL )); // get the address of whatever array from the stack
+    }
+
+  } else {
+    if (!findName(table, name)) {
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("Undeclared array variable");
+      errorFlag1++;
+    } else if ( getCurrentAttr(table) == NULL){
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("This variable cannot be referenced as an array");
+      errorFlag1++;
+    } else {}
+
+    AppendSeq(code, GenInstr(NULL, "la", TmpRegName(addressReg), name ,NULL ));
+  }
+
+
+  sprintf(strAddr, "0(%s)", TmpRegName(addressReg));
+
   AppendSeq(code, GenInstr(NULL, "sll", TmpRegName(arrayIndexRes->Reg), TmpRegName(arrayIndexRes->Reg), "2"));
   AppendSeq(code, GenInstr(NULL, "add", TmpRegName(addressReg), TmpRegName(addressReg), TmpRegName(arrayIndexRes->Reg)));
   AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(assignmentRes->Reg), strAddr, NULL));
+
+  ReleaseTmpReg(addressReg);
+  ReleaseTmpReg(arrayIndexRes->Reg);
+  ReleaseTmpReg(assignmentRes->Reg);
+  free(arrayIndexRes);
+  free(assignmentRes);
 
   return code;
 }
@@ -641,7 +700,7 @@ void defineAndAppendFunction(void * table, char * functionName, struct InstrSeq 
   pureLocalsCount = localVarCount - functionParamsCount;
   sprintf(offset, "%d", -(pureLocalsCount*4));
   AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", offset)); // decrease stack pointer size of num locals and one more for $ra
-  for(int i = 0; i < pureLocalsCount; i++) {// for the count of locals, initialize them to zero
+  for(int i = 0; i < pureLocalsCount; i++) {// for the count of , initialize them to zero
     sprintf(offset, "%d($sp)", i*4);
     AppendSeq(code, GenInstr(NULL, "sw", "$zero", offset, NULL));
   }
@@ -689,7 +748,7 @@ void checkReturn() {
   returnFlag = 0;
 }
 
-struct InstrSeq * doVoidFunctionCall(char * name) {
+struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList) {
   struct InstrSeq * code;
 
   if (!findName(voidFunctionTable, name)) {
@@ -698,17 +757,14 @@ struct InstrSeq * doVoidFunctionCall(char * name) {
    errorFlag1++;
   }
 
-  code = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
-  AppendSeq(code, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
-  AppendSeq(code, SaveSeq());
+  code = saveRAAndSeq();
+  AppendSeq(code, pushParameters(ExprList));
   AppendSeq(code, GenInstr(NULL, "jal", name, NULL, NULL));
-  AppendSeq(code, RestoreSeq());
-  AppendSeq(code, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
-  AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
+  AppendSeq(code, restoreRAAndSeq());
   return code;
 }
 
-struct ExprRes * doIntFunctionCall(char * name) {
+struct ExprRes * doIntFunctionCall(char * name, struct ExprResList * ExprList) {
   struct ExprRes * res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   int reg;
 
@@ -718,19 +774,77 @@ struct ExprRes * doIntFunctionCall(char * name) {
    errorFlag1++;
   }
 
-  res->Instrs = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
-  AppendSeq(res->Instrs, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
-  AppendSeq(res->Instrs, SaveSeq());
+  // res->Instrs = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
+  // AppendSeq(res->Instrs, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
+  // AppendSeq(res->Instrs, SaveSeq());
+  res->Instrs = saveRAAndSeq();
+  AppendSeq(res->Instrs, pushParameters(ExprList));
   AppendSeq(res->Instrs, GenInstr(NULL, "jal", name, NULL, NULL));
-  AppendSeq(res->Instrs, RestoreSeq());
+  AppendSeq(res->Instrs, restoreRAAndSeq());
+  // AppendSeq(res->Instrs, RestoreSeq());
   reg = AvailTmpReg();
   AppendSeq(res->Instrs, GenInstr(NULL, "addi", TmpRegName(reg), "$v0", "0"));
-  AppendSeq(res->Instrs, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
-  AppendSeq(res->Instrs, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
+  // AppendSeq(res->Instrs, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
+  // AppendSeq(res->Instrs, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
 
   res->Reg = reg;
 
   return res;
+}
+
+struct InstrSeq * saveRAAndSeq() {
+  struct InstrSeq * code;
+  code = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
+  AppendSeq(code, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
+  AppendSeq(code, SaveSeq());
+
+  return code;
+}
+
+struct InstrSeq * restoreRAAndSeq() {
+  struct InstrSeq * code;
+  code = RestoreSeq();
+  AppendSeq(code, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
+  AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
+
+  return code;
+}
+
+struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
+  struct InstrSeq * code = NULL;
+  if(ExprList) {
+    struct ExprResList* currentExprRes = ExprList;
+    struct ExprResList* oldExprResList;
+    int reg;
+
+    code = GenInstr(NULL, NULL, NULL, NULL, NULL);
+
+    while(currentExprRes) {
+
+      if(currentExprRes->arrayName) {
+        reg = AvailTmpReg();
+        AppendSeq(code, GenInstr(NULL, "la", TmpRegName(reg), currentExprRes->arrayName, NULL ));
+        AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
+        AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(reg), "0($sp)", NULL));
+
+        ReleaseTmpReg(reg);
+
+      } else  {
+        AppendSeq(code, currentExprRes->Expr->Instrs);
+        AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
+        AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
+
+        ReleaseTmpReg(currentExprRes->Expr->Reg);
+        free(currentExprRes->Expr);
+      }
+
+      oldExprResList = currentExprRes;
+      currentExprRes = ExprResList->Next;
+      free(oldExprResList);
+    }
+  }
+
+  return code;
 }
 
 void insertScopedName(char * name) {

@@ -5,6 +5,7 @@
 /* Semantic Records */
 struct IdList {
   struct SymEntry * TheEntry;
+  struct ExprRes * ArrayIndexRes;
   struct IdList * Next;
 };
 
@@ -15,6 +16,7 @@ struct ExprRes {
 
 struct ExprResList {
 	struct ExprRes *Expr;
+  char * arrayName;
 	struct ExprResList * Next;
 };
 
@@ -51,6 +53,8 @@ extern struct InstrSeq * doPrint(struct ExprRes * Expr);
 
 extern struct InstrSeq * doInputOnId(char * name);
 extern struct InstrSeq * doInputOnList(struct IdList * list );
+
+extern struct InstrSeq * doArrayToIdList(char * name, struct ExprRes * indexRes );
 extern struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName);
 extern struct IdList * doIdToIdList(char * Id1, char * Id2);
 
@@ -68,6 +72,11 @@ extern struct InstrSeq * doReturn();
 extern void checkReturn();
 extern struct InstrSeq * doVoidFunctionCall(char * name);
 extern struct ExprRes * doIntFunctionCall(char * name);
+
+extern struct InstrSeq * saveRAAndSeq();
+extern struct InstrSeq * restoreRAAndSeq();
+
+struct InstrSeq * pushParameters(struct ExprResList * ExprList);
 
 extern void insertScopedName(char * name);
 
