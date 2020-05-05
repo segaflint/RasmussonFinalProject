@@ -49,6 +49,7 @@ extern int functionParamsCount;
 %type <BExprRes> BTerm
 %type <BExprRes> BFactor
 %type <ExprResList> ExprList
+%type <ExprResList> ExprParamList
 %type <IdList> ReadIdentList
 %type <IdList> Variable
 %type <IdList> ParamList
@@ -99,7 +100,7 @@ LocalDec  : Int Id ';'          {insertScopedName($2);};
 LocalDec  : Int Id '[' IntLit ']' ';' {};
 StmtSeq 	:	Stmt StmtSeq			  {$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
-Stmt      : Id '(' ')' ';'      {$$ = doVoidFunctionCall($1);};
+Stmt      : Id '(' ExprParamList ')' ';'      {$$ = doVoidFunctionCall($1, $3);};
 Stmt      : RETURN Expr ';'     {$$ = doReturnInt($2);};
 Stmt      : RETURN ';'          {$$ = doReturn();};
 Stmt			:	Write Expr ';'			{$$ = doPrint($2); };
@@ -146,8 +147,11 @@ Expo      : '(' Expr ')'        { $$ = $2;};
 Expo   		:	IntLit							{ $$ = doIntLit(yytext); };
 Expo  		:	Id								  { $$ = doRval($1); };
 Expo      : Id '[' Expr ']'     { $$ = doArrayRval($1, $3);};
-Expo      : Id '(' ')'          {$$ = doIntFunctionCall($1);};
+Expo      : Id '(' ExprParamList ')'          {$$ = doIntFunctionCall($1, $3);};
 Id			  : Ident								{ $$ = strdup(yytext);}
+ExprParamList : Expr ',' ExprParamList {};
+ExprParamList : Expr            {};
+ExprParamList :                 {$$ = NULL;};  
 
 %%
 

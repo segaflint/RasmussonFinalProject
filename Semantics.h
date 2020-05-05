@@ -51,12 +51,12 @@ extern struct InstrSeq * doPrintline();
 extern struct InstrSeq * doPrintSpaces(struct ExprRes * res);
 extern struct InstrSeq * doPrint(struct ExprRes * Expr);
 
-extern struct InstrSeq * doInputOnId(char * name);
+// extern struct InstrSeq * doInputOnId(char * name);
 extern struct InstrSeq * doInputOnList(struct IdList * list );
 
-extern struct InstrSeq * doArrayToIdList(char * name, struct ExprRes * indexRes );
-extern struct IdList * doAppendIdentList(struct IdList * IdentList, char * variableName);
-extern struct IdList * doIdToIdList(char * Id1, char * Id2);
+extern struct IdList * doArrayToIdList(char * name, struct ExprRes * indexRes );
+extern struct IdList * doAppendIdentList(struct IdList * IdentList1, struct IdList * IdentList2);
+extern struct IdList * doIdToIdList(char * name);
 
 extern struct InstrSeq * doIf(struct BExprRes *bRes, struct InstrSeq * seq);
 extern struct InstrSeq * doIfElse(struct BExprRes * bRes, struct InstrSeq * ifSeq, struct InstrSeq * elseSeq);
@@ -70,8 +70,8 @@ extern void defineAndAppendFunction(void * table, char * functionName, struct In
 extern struct InstrSeq * doReturnInt(struct ExprRes * res);
 extern struct InstrSeq * doReturn();
 extern void checkReturn();
-extern struct InstrSeq * doVoidFunctionCall(char * name);
-extern struct ExprRes * doIntFunctionCall(char * name);
+extern struct InstrSeq * doVoidFunctionCall(char * name,  struct ExprResList * ExprList);
+extern struct ExprRes * doIntFunctionCall(char * name, struct ExprResList * ExprList);
 
 extern struct InstrSeq * saveRAAndSeq();
 extern struct InstrSeq * restoreRAAndSeq();

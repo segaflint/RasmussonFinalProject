@@ -70,7 +70,7 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
   struct InstrSeq *code;
 
   code = Expr->Instrs;
-  if(funcContextFlag && findName(localTable, name)) { // within a function and name found
+  if(funcContextFlag && findName(localTable, name)) { // local var
     char offset[8];
     int varOffset = (int) getCurrentAttr(localTable);
 
@@ -496,13 +496,13 @@ struct InstrSeq * doPrint(struct ExprRes * Expr) {
 //   return code;
 // }
 
-struct InstrSeq * doInputOnList(struct IdList * IdList ) {
+struct InstrSeq * doInputOnList(struct IdList * list ) {
   struct InstrSeq * code;
   struct IdList * currentList;
   struct IdList * oldList;
   struct ExprRes * assignmentRes;
 
-  currentList = IdList;
+  currentList = list;
   code = GenInstr(NULL, NULL, NULL, NULL, NULL);
 
   while (currentList) {
@@ -516,13 +516,20 @@ struct InstrSeq * doInputOnList(struct IdList * IdList ) {
     if( funcContextFlag && findName(localTable, currentList->TheEntry->name)) { // context is local
       if(currentList->ArrayIndexRes) { // this is an array
         AppendSeq(code, doArrayAssign(getCurrentName(localTable), currentList->ArrayIndexRes, assignmentRes));
-
-      } else { // not an array
-
+      } else { // local var
+        AppendSeq(code, doAssign(getCurrentName(localTable), assignmentRes));
       }
-    } else {
-
-      AppendSeq(code,GenInstr(NULL,"sw","$v0", currentList->TheEntry->name, NULL)); // local variable
+    } else { // global context
+      if(currentList->ArrayIndexRes) { //array
+        if(!findName(table, currentList->TheEntry->name)) {
+          writeIndicator(getCurrentColumnNum());
+          writeMessage("No array by such a name exists");
+          errorFlag1++;
+        }
+        AppendSeq(code, doArrayAssign(getCurrentName(table), currentList->ArrayIndexRes, assignmentRes));
+      } else { // global var
+        AppendSeq(code, doAssign(getCurrentName(table), assignmentRes));
+      }
     }
 
     oldList = currentList;
@@ -569,7 +576,7 @@ struct IdList * doIdToIdList(char * name){
   struct IdList * newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
 
   if(funcContextFlag && findName(localTable, name)) { //name found in locals
-    newIdList = localTable->current;
+    newIdList->TheEntry = localTable->current;
   } else  {
     if (!findName(table, name)) {
       writeIndicator(getCurrentColumnNum());
@@ -640,7 +647,7 @@ struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
 struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, struct ExprRes * assignmentRes) {
   struct InstrSeq * code;
   int addressReg = AvailTmpReg();
-  char * strAddr[7];
+  char * strAddr = (char *) malloc(sizeof(char) * 7);
   int stackAddress;
 
   code = arrayIndexRes->Instrs;
@@ -652,7 +659,7 @@ struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, str
     int pureLocalsCount = localVarCount - functionParamsCount;
 
     if(varOffset >= functionParamsCount) { // locally allocated variable array
-      sprintf(offset, "%d", varOffset*4 )
+      sprintf(offset, "%d", varOffset*4 );
       AppendSeq(code, GenInstr(NULL, "addi", TmpRegName(addressReg), "$sp", offset));
     } else { // globally allocated
 
@@ -839,7 +846,7 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
       }
 
       oldExprResList = currentExprRes;
-      currentExprRes = ExprResList->Next;
+      currentExprRes = ExprList->Next;
       free(oldExprResList);
     }
   }
