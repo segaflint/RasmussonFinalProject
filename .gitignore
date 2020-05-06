@@ -9,3 +9,4 @@ compile
 *.txt
 *.ñ
 yaccCode
+.DS_Store
