@@ -20,8 +20,6 @@ extern SymTab *localTable;
 int errorFlag1 = 0;
 int returnFlag = 0;
 int funcContextFlag= 0;
-int noParamsFlag = 0;
-int noLocalsFlag = 0;
 int localVarCount = 0;
 int functionParamsCount = 0;
 char * finishFunctionLabel = "FinishFunction";
@@ -59,7 +57,11 @@ struct ExprRes *  doRval(char * name)  {
       writeMessage("Undeclared variable");
       errorFlag1++;
     }
-    res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
+    if(!getCurrentAttr(table)){ // attribute is null, so not an array
+      res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
+    } else  { //attribute not null, is an array
+      res->Instrs = GenInstr(NULL,"la",TmpRegName(res->Reg),name,NULL);
+    }
   }
 
   return res;
@@ -520,12 +522,12 @@ struct InstrSeq * doInputOnList(struct IdList * list ) {
         AppendSeq(code, doAssign(getCurrentName(localTable), assignmentRes));
       }
     } else { // global context
-      if(currentList->ArrayIndexRes) { //array
-        if(!findName(table, currentList->TheEntry->name)) {
-          writeIndicator(getCurrentColumnNum());
-          writeMessage("No array by such a name exists");
-          errorFlag1++;
-        }
+      if(!findName(table, currentList->TheEntry->name)) {
+        writeIndicator(getCurrentColumnNum());
+        writeMessage("No array by such a name exists");
+        errorFlag1++;
+      }
+      if(currentList->ArrayIndexRes) { // global array
         AppendSeq(code, doArrayAssign(getCurrentName(table), currentList->ArrayIndexRes, assignmentRes));
       } else { // global var
         AppendSeq(code, doAssign(getCurrentName(table), assignmentRes));
@@ -621,19 +623,35 @@ struct ExprRes * doArrayRval(char * name, struct ExprRes * res){
   valueReg = AvailTmpReg();
   exprReg = res->Reg;
 
-  if (!findName(table, name)) {
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("Undeclared array variable");
-    errorFlag1++;
-  } else if ( getCurrentAttr(table) == NULL){
-    writeIndicator(getCurrentColumnNum());
-    writeMessage("This variable cannot be referenced as an array");
-    errorFlag1++;
-  } else {}
+  if( funcContextFlag && findName(localTable, name)) {
+    char offset[8];
+    int varOffset = (int) getCurrentAttr(localTable);
+
+    if(varOffset >= functionParamsCount) { // locally allocated variable array
+      sprintf(offset, "%d", ((localVarCount - varOffset)-1)*4);
+      AppendSeq(res->Instrs, GenInstr(NULL, "addi", TmpRegName(valueReg), "$sp", offset));
+    } else { // globally allocated
+
+      sprintf(offset, "%d($sp)", ((localVarCount - varOffset)-1)*4);
+      AppendSeq(res->Instrs, GenInstr(NULL, "lw", TmpRegName(valueReg), offset ,NULL )); // get the address of whatever array from the stack
+    }
+
+  } else {
+    if (!findName(table, name)) {
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("Undeclared array variable");
+      errorFlag1++;
+    } else if ( getCurrentAttr(table) == NULL){
+      writeIndicator(getCurrentColumnNum());
+      writeMessage("This variable cannot be referenced as an array");
+      errorFlag1++;
+    } else {}
+
+    AppendSeq(res->Instrs, GenInstr(NULL, "la", TmpRegName(valueReg), name, NULL));
+  }
 
   sprintf(strAddr, "0(%s)",TmpRegName(valueReg));
 
-  AppendSeq(res->Instrs, GenInstr(NULL, "la", TmpRegName(valueReg), name, NULL));
   AppendSeq(res->Instrs, GenInstr(NULL, "sll", TmpRegName(exprReg), TmpRegName(exprReg), "2"));
   AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(valueReg), TmpRegName(valueReg), TmpRegName(exprReg)));
   AppendSeq(res->Instrs, GenInstr(NULL, "lw", TmpRegName(valueReg), strAddr, NULL));
@@ -656,10 +674,9 @@ struct InstrSeq * doArrayAssign(char * name, struct ExprRes * arrayIndexRes, str
   if(funcContextFlag && findName(localTable, name)) {
     char offset[8];
     int varOffset = (int) getCurrentAttr(localTable);
-    int pureLocalsCount = localVarCount - functionParamsCount;
 
     if(varOffset >= functionParamsCount) { // locally allocated variable array
-      sprintf(offset, "%d", varOffset*4 );
+      sprintf(offset, "%d", ((localVarCount - varOffset)-1)*4);
       AppendSeq(code, GenInstr(NULL, "addi", TmpRegName(addressReg), "$sp", offset));
     } else { // globally allocated
 
@@ -828,22 +845,12 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
 
     while(currentExprRes) {
 
-      if(currentExprRes->arrayName) {
-        reg = AvailTmpReg();
-        AppendSeq(code, GenInstr(NULL, "la", TmpRegName(reg), currentExprRes->arrayName, NULL ));
-        AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
-        AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(reg), "0($sp)", NULL));
+      AppendSeq(code, currentExprRes->Expr->Instrs);
+      AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
+      AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
 
-        ReleaseTmpReg(reg);
-
-      } else  {
-        AppendSeq(code, currentExprRes->Expr->Instrs);
-        AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
-        AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
-
-        ReleaseTmpReg(currentExprRes->Expr->Reg);
-        free(currentExprRes->Expr);
-      }
+      ReleaseTmpReg(currentExprRes->Expr->Reg);
+      free(currentExprRes->Expr);
 
       oldExprResList = currentExprRes;
       currentExprRes = ExprList->Next;
@@ -854,11 +861,50 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
   return code;
 }
 
+struct ExprResList * doAppendExprListToExprList(struct ExprResList * list1, struct ExprResList * list2) {
+  list1->Next = list2;
+  return list1;
+}
+
+struct ExprResList * doOneExprToExprList(struct ExprRes * res) {
+  struct ExprResList * resList = (struct ExprResList *) malloc(sizeof(struct ExprResList));
+
+  resList->Expr = res;
+  resList->arrayName = NULL;
+  resList->Next = NULL;
+
+  return resList;
+}
+
+struct ExprResList * doArrayNameToExprList(char * name) {
+  struct ExprResList * resList = (struct ExprResList *) malloc(sizeof(struct ExprResList));
+
+  resList->Expr = NULL;
+  resList->arrayName = name;
+  resList->Next = NULL;
+
+  return resList;
+}
+
 void insertScopedName(char * name) {
   enterName(localTable, name);
   setCurrentAttr(localTable, (void *) localVarCount);
   localVarCount++;
 
+}
+
+void insertArrayScopedName(char * name, int arraySize) {
+  enterName(localTable, name);
+  if(arraySize < 1) {
+    writeIndicator(getCurrentColumnNum());
+    writeMessage("Cannot declare an array with a size smaller than 1");
+    errorFlag1++;
+  }
+
+  for (int i = 0; i < arraySize; i++){
+    setCurrentAttr(localTable, (void *) localVarCount);
+    localVarCount++;
+  }
 }
 
 void cleanUpFunction() {
@@ -928,7 +974,12 @@ Finish(struct InstrSeq *Code){
     hasMore = nextEntry(table);
   }
 
-  WriteSeq(code);
+  if(errorFlag1) {
+    printf("You have existing errors, please see listing file\n" );
+  } else  {
+    WriteSeq(code);
+
+  }
 
   return;
 }

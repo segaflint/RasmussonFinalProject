@@ -78,7 +78,12 @@ extern struct InstrSeq * restoreRAAndSeq();
 
 struct InstrSeq * pushParameters(struct ExprResList * ExprList);
 
+extern struct ExprResList * doAppendExprListToExprList(struct ExprResList * list1, struct ExprResList * list2);
+extern struct ExprResList * doOneExprToExprList(struct ExprRes * res);
+extern struct ExprResList * doArrayNameToExprList(char * name);
+
 extern void insertScopedName(char * name);
+extern void insertArrayScopedName(char * name, int arraySize);
 
 extern void cleanUpFunction();
 

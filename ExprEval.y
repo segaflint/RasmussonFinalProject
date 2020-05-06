@@ -21,8 +21,6 @@ extern SymTab *localTable;
 extern SymTab *functionParamsTable;
 extern int returnFlag;
 extern int funcContextFlag;
-extern int noParamsFlag;
-extern int noLocalsFlag;
 extern int functionParamsCount;
 
 %}
@@ -50,6 +48,7 @@ extern int functionParamsCount;
 %type <BExprRes> BFactor
 %type <ExprResList> ExprList
 %type <ExprResList> ExprParamList
+%type <ExprResList> ListPiece
 %type <IdList> ReadIdentList
 %type <IdList> Variable
 %type <IdList> ParamList
@@ -97,7 +96,7 @@ Param     : Int Id'['']'        {insertScopedName($2); functionParamsCount++;};
 LocalsList: LocalDec LocalsList {};
 LocalsList:                     {};
 LocalDec  : Int Id ';'          {insertScopedName($2);};
-LocalDec  : Int Id '[' IntLit ']' ';' {};
+LocalDec  : Int Id '[' IntLit   {insertArrayScopedName($2, atoi(yytext));} ']' ';' {};
 StmtSeq 	:	Stmt StmtSeq			  {$$ = AppendSeq($1, $2); } ;
 StmtSeq		:											{$$ = NULL;} ;
 Stmt      : Id '(' ExprParamList ')' ';'      {$$ = doVoidFunctionCall($1, $3);};
@@ -149,9 +148,12 @@ Expo  		:	Id								  { $$ = doRval($1); };
 Expo      : Id '[' Expr ']'     { $$ = doArrayRval($1, $3);};
 Expo      : Id '(' ExprParamList ')'          {$$ = doIntFunctionCall($1, $3);};
 Id			  : Ident								{ $$ = strdup(yytext);}
-ExprParamList : Expr ',' ExprParamList {};
-ExprParamList : Expr            {};
-ExprParamList :                 {$$ = NULL;};  
+ExprParamList : ListPiece ',' ExprParamList {doAppendExprListToExprList($1, $3);};
+ExprParamList : ListPiece       {$$ = $1;};
+ExprParamList :                 {$$ = NULL;};
+ListPiece : Expr                {doOneExprToExprList($1);};
+ListPiece : Id '['']'           {doArrayNameToExprList($1);};
+
 
 %%
 
