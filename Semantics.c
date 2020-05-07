@@ -23,6 +23,7 @@ int funcContextFlag= 0;
 int localVarCount = 0;
 int functionParamsCount = 0;
 char * finishFunctionLabel = "FinishFunction";
+struct InstrSeq * saveSequence = NULL;
 
 /* Semantics support routines */
 
@@ -57,6 +58,7 @@ struct ExprRes *  doRval(char * name)  {
       writeMessage("Undeclared variable");
       errorFlag1++;
     }
+
     if(!getCurrentAttr(table)){ // attribute is null, so not an array
       res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
     } else  { //attribute not null, is an array
@@ -96,8 +98,8 @@ struct InstrSeq * doAssign(char *name, struct ExprRes * Expr) {
 struct ExprRes *  doArith(struct ExprRes * Res1, struct ExprRes * Res2, char * inst)  {
 
   int reg;
-
   reg = AvailTmpReg();
+
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL, inst,
                                        TmpRegName(reg),
@@ -774,11 +776,19 @@ void checkReturn() {
 
 struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList) {
   struct InstrSeq * code;
+  struct ExprResList * currentList = ExprList;
+
 
   if (!findName(voidFunctionTable, name)) {
    writeIndicator(getCurrentColumnNum());
    writeMessage("No such void function exists");
    errorFlag1++;
+  }
+
+  while(currentList) { // free all regs; this is needed so that saveSeq doesnt
+                        // take into account the regs used in the calculations of parameters
+    ReleaseTmpReg(currentList->Expr->Reg);
+    currentList = currentList->Next;
   }
 
   code = saveRAAndSeq();
@@ -790,6 +800,7 @@ struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList)
 
 struct ExprRes * doIntFunctionCall(char * name, struct ExprResList * ExprList) {
   struct ExprRes * res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+  struct ExprResList * currentList = ExprList;
   int reg;
 
   if (!findName(intFunctionTable, name)) {
@@ -801,6 +812,12 @@ struct ExprRes * doIntFunctionCall(char * name, struct ExprResList * ExprList) {
   // res->Instrs = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
   // AppendSeq(res->Instrs, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
   // AppendSeq(res->Instrs, SaveSeq());
+  while(currentList) { // free all regs; this is needed so that saveSeq doesnt
+                        // take into account the regs used in the calculations of parameters
+    ReleaseTmpReg(currentList->Expr->Reg);
+    currentList = currentList->Next;
+  }
+
   res->Instrs = saveRAAndSeq();
   AppendSeq(res->Instrs, pushParameters(ExprList));
   AppendSeq(res->Instrs, GenInstr(NULL, "jal", name, NULL, NULL));
@@ -836,6 +853,7 @@ struct InstrSeq * restoreRAAndSeq() {
 
 struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
   struct InstrSeq * code = NULL;
+
   if(ExprList) {
     struct ExprResList* currentExprRes = ExprList;
     struct ExprResList* oldExprResList;
@@ -845,11 +863,10 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
 
     while(currentExprRes) {
 
-      AppendSeq(code, currentExprRes->Expr->Instrs);
+      AppendSeq(code, currentExprRes->Expr->Instrs); // instrs are NULL
       AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
       AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
-
-      ReleaseTmpReg(currentExprRes->Expr->Reg);
+      // ReleaseTmpReg(currentExprRes->Expr->Reg);
       free(currentExprRes->Expr);
 
       oldExprResList = currentExprRes;
@@ -862,6 +879,7 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
 }
 
 struct ExprResList * doAppendExprListToExprList(struct ExprResList * list1, struct ExprResList * list2) {
+
   list1->Next = list2;
   return list1;
 }
@@ -1008,4 +1026,14 @@ void generateTableInstructions(struct InstrSeq * code) {
 void appendFinishedFunction(struct InstrSeq * code){
   AppendSeq(code, GenInstr(finishFunctionLabel, NULL, NULL, NULL, NULL));
   AppendSeq(code, GenInstr(NULL, "jr", "$ra", NULL, NULL));
+}
+
+void doSaveSequence(){
+  saveSequence = saveRAAndSeq();
+}
+
+void checkThis(struct ExprResList * list) {
+  printf("Gets to checkThis\n" );
+  printf("%p\n", list->Expr );
+  printf("askldj\n" );
 }

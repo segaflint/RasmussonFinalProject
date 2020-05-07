@@ -146,13 +146,12 @@ Expo      : '(' Expr ')'        { $$ = $2;};
 Expo   		:	IntLit							{ $$ = doIntLit(yytext); };
 Expo  		:	Id								  { $$ = doRval($1); };
 Expo      : Id '[' Expr ']'     { $$ = doArrayRval($1, $3);};
-Expo      : Id '(' ExprParamList ')'          {$$ = doIntFunctionCall($1, $3);};
+Expo      : Id '(' ExprParamList ')'      { $$ = doIntFunctionCall($1, $3); };
 Id			  : Ident								{ $$ = strdup(yytext);}
-ExprParamList : ListPiece ',' ExprParamList {doAppendExprListToExprList($1, $3);};
+ExprParamList : ListPiece ',' ExprParamList {$$ = doAppendExprListToExprList($1, $3);};
 ExprParamList : ListPiece       {$$ = $1;};
 ExprParamList :                 {$$ = NULL;};
-ListPiece : Expr                {doOneExprToExprList($1);};
-ListPiece : Id '['']'           {doArrayNameToExprList($1);};
+ListPiece : Expr                {$$ = doOneExprToExprList($1);};
 
 
 %%

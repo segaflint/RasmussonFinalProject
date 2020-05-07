@@ -91,3 +91,7 @@ extern void	Finish(struct InstrSeq *Code);
 
 void generateTableInstructions(struct InstrSeq * code);
 void appendFinishedFunction(struct InstrSeq * code);
+
+void doSaveSequence();
+
+extern void checkThis(struct ExprResList * list);
