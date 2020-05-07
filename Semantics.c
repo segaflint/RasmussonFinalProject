@@ -785,13 +785,15 @@ struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList)
    errorFlag1++;
   }
 
+  code = GenInstr(NULL, NULL, NULL, NULL, NULL);
   while(currentList) { // free all regs; this is needed so that saveSeq doesnt
-                        // take into account the regs used in the calculations of parameters
+    // take into account the regs used in the calculations of parameters
+    AppendSeq(code, currentList->Expr->Instrs);
     ReleaseTmpReg(currentList->Expr->Reg);
     currentList = currentList->Next;
   }
 
-  code = saveRAAndSeq();
+  AppendSeq(code, saveRAAndSeq());
   AppendSeq(code, pushParameters(ExprList));
   AppendSeq(code, GenInstr(NULL, "jal", name, NULL, NULL));
   AppendSeq(code, restoreRAAndSeq());
@@ -808,17 +810,24 @@ struct ExprRes * doIntFunctionCall(char * name, struct ExprResList * ExprList) {
    writeMessage("No such int function exists");
    errorFlag1++;
   }
+  /* 1. Evaluate parameters (append their code; need this first so that stack is
+      set up correctly) and free registers(even though they still neet to be pushed
+      they wont be used because the only thing to happen is the saveSeq and push $ra)
+     2.push $ra
+     3. saveSeq (Note: since we freed the param regs, they wont be counted in saveSeq)
+     4. pushParameters
+  */
 
-  // res->Instrs = GenInstr(NULL, "addi", "$sp", "$sp", "-4");
-  // AppendSeq(res->Instrs, GenInstr(NULL, "sw", "$ra", "0($sp)", NULL));
-  // AppendSeq(res->Instrs, SaveSeq());
+
+  res->Instrs = GenInstr(NULL, NULL, NULL, NULL, NULL);
   while(currentList) { // free all regs; this is needed so that saveSeq doesnt
                         // take into account the regs used in the calculations of parameters
+    AppendSeq(res->Instrs, currentList->Expr->Instrs);
     ReleaseTmpReg(currentList->Expr->Reg);
     currentList = currentList->Next;
   }
 
-  res->Instrs = saveRAAndSeq();
+  AppendSeq(res->Instrs, saveRAAndSeq());
   AppendSeq(res->Instrs, pushParameters(ExprList));
   AppendSeq(res->Instrs, GenInstr(NULL, "jal", name, NULL, NULL));
   AppendSeq(res->Instrs, restoreRAAndSeq());
@@ -845,6 +854,7 @@ struct InstrSeq * saveRAAndSeq() {
 struct InstrSeq * restoreRAAndSeq() {
   struct InstrSeq * code;
   code = RestoreSeq();
+  if(!code) code = GenInstr(NULL, NULL, NULL, NULL, NULL);
   AppendSeq(code, GenInstr(NULL, "lw", "$ra", "0($sp)", NULL));
   AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "4"));
 
@@ -863,7 +873,6 @@ struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
 
     while(currentExprRes) {
 
-      AppendSeq(code, currentExprRes->Expr->Instrs); // instrs are NULL
       AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
       AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
       // ReleaseTmpReg(currentExprRes->Expr->Reg);
