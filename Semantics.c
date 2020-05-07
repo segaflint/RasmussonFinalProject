@@ -510,13 +510,11 @@ struct InstrSeq * doInputOnList(struct IdList * list ) {
   code = GenInstr(NULL, NULL, NULL, NULL, NULL);
 
   while (currentList) {
-
     assignmentRes = (struct ExprRes *) malloc(sizeof(struct ExprRes));
     assignmentRes->Reg = AvailTmpReg();
     assignmentRes->Instrs = GenInstr(NULL, "li", "$v0", "5", NULL);
     AppendSeq(assignmentRes->Instrs, GenInstr(NULL, "syscall", NULL, NULL, NULL));
     AppendSeq(assignmentRes->Instrs, GenInstr(NULL, "addi", TmpRegName(assignmentRes->Reg), "$v0", "0"));
-
     if( funcContextFlag && findName(localTable, currentList->TheEntry->name)) { // context is local
       if(currentList->ArrayIndexRes) { // this is an array
         AppendSeq(code, doArrayAssign(getCurrentName(localTable), currentList->ArrayIndexRes, assignmentRes));
@@ -547,7 +545,6 @@ struct InstrSeq * doInputOnList(struct IdList * list ) {
 
 struct IdList * doArrayToIdList(char * name, struct ExprRes * indexRes ){
   struct IdList * newIdList = (struct IdList * ) malloc(sizeof(struct IdList));
-
   if(funcContextFlag && findName(localTable, name)) { //name is found in locals
     newIdList->TheEntry = localTable->current; // attribute on local is a variables index in local variables
 
@@ -560,6 +557,7 @@ struct IdList * doArrayToIdList(char * name, struct ExprRes * indexRes ){
 
     newIdList->TheEntry = table->current; //attribute on global is an array size
   }
+
   newIdList->Next = NULL;
   newIdList->ArrayIndexRes = indexRes;
 
@@ -568,6 +566,7 @@ struct IdList * doArrayToIdList(char * name, struct ExprRes * indexRes ){
 
 struct IdList * doAppendIdentList(struct IdList * IdentList1, struct IdList * IdentList2) {
   struct IdList * currentList = IdentList1;
+
 
   while(currentList->Next) currentList = currentList->Next;
 
@@ -779,6 +778,7 @@ struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList)
   struct ExprResList * currentList = ExprList;
 
 
+
   if (!findName(voidFunctionTable, name)) {
    writeIndicator(getCurrentColumnNum());
    writeMessage("No such void function exists");
@@ -794,6 +794,7 @@ struct InstrSeq * doVoidFunctionCall(char * name, struct ExprResList * ExprList)
   }
 
   AppendSeq(code, saveRAAndSeq());
+
   AppendSeq(code, pushParameters(ExprList));
   AppendSeq(code, GenInstr(NULL, "jal", name, NULL, NULL));
   AppendSeq(code, restoreRAAndSeq());
@@ -863,23 +864,23 @@ struct InstrSeq * restoreRAAndSeq() {
 
 struct InstrSeq * pushParameters(struct ExprResList * ExprList) {
   struct InstrSeq * code = NULL;
-
   if(ExprList) {
     struct ExprResList* currentExprRes = ExprList;
     struct ExprResList* oldExprResList;
     int reg;
+    int count = 0;
 
     code = GenInstr(NULL, NULL, NULL, NULL, NULL);
 
     while(currentExprRes) {
-
+      count++;
       AppendSeq(code, GenInstr(NULL, "addi", "$sp", "$sp", "-4"));
       AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(currentExprRes->Expr->Reg), "0($sp)", NULL));
       // ReleaseTmpReg(currentExprRes->Expr->Reg);
       free(currentExprRes->Expr);
 
       oldExprResList = currentExprRes;
-      currentExprRes = ExprList->Next;
+      currentExprRes = currentExprRes->Next;
       free(oldExprResList);
     }
   }
@@ -897,21 +898,21 @@ struct ExprResList * doOneExprToExprList(struct ExprRes * res) {
   struct ExprResList * resList = (struct ExprResList *) malloc(sizeof(struct ExprResList));
 
   resList->Expr = res;
-  resList->arrayName = NULL;
+  // resList->arrayName = NULL;
   resList->Next = NULL;
 
   return resList;
 }
 
-struct ExprResList * doArrayNameToExprList(char * name) {
-  struct ExprResList * resList = (struct ExprResList *) malloc(sizeof(struct ExprResList));
-
-  resList->Expr = NULL;
-  resList->arrayName = name;
-  resList->Next = NULL;
-
-  return resList;
-}
+// struct ExprResList * doArrayNameToExprList(char * name) {
+//   struct ExprResList * resList = (struct ExprResList *) malloc(sizeof(struct ExprResList));
+//
+//   resList->Expr = NULL;
+//   resList->arrayName = name;
+//   resList->Next = NULL;
+//
+//   return resList;
+// }
 
 void insertScopedName(char * name) {
   enterName(localTable, name);

@@ -16,7 +16,7 @@ struct ExprRes {
 
 struct ExprResList {
 	struct ExprRes *Expr;
-  char * arrayName;
+  // char * arrayName;
 	struct ExprResList * Next;
 };
 
